@@ -1,0 +1,22 @@
+# Ignore datasets and large models
+datasets/
+models/
+results/
+checkpoints/
+explainability/
+
+
+# Ignore typical temporary files
+*.pt
+*.npy
+*.pkl
+*.zip
+*.tar.gz
+*.log
+__pycache__/
+.ipynb_checkpoints/
+
+# Ignore Google Drive system files
+*.shortcut
+*.tmp
+drive/
