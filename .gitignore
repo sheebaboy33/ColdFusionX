@@ -1,9 +1,12 @@
 # Ignore datasets and large models
-datasets/
-models/
-results/
-checkpoints/
-explainability/
+
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+*.env
 
 
 # Ignore typical temporary files
