@@ -1,25 +1,65 @@
-# Ignore datasets and large models
-
-
-# Virtual environments
-venv/
-env/
-.venv/
-ENV/
-*.env
-
-
-# Ignore typical temporary files
-*.pt
-*.npy
-*.pkl
-*.zip
-*.tar.gz
-*.log
+## Python & Environment
 __pycache__/
-.ipynb_checkpoints/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
 
-# Ignore Google Drive system files
-*.shortcut
-*.tmp
-drive/
+
+## Large Artifacts (The "Release" Bundle)
+# We ignore the specific generated demo folder because it contains 
+# large weights and tensors. 
+# artifacts/release_demo/
+
+# folder structure but not the files, 
+artifacts/release_demo/**/*.pt
+artifacts/release_demo/**/*.npy
+artifacts/release_demo/**/*.parquet
+artifacts/release_demo/**/*.json
+artifacts/release_demo/**/*.csv
+
+
+
+## Model & Data Files (General Safety)
+
+# Block any heavy files accidentally placed in other folders
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.npy
+*.npz
+*.parquet
+*.h5
+*.pkl
+*.pickle
+
+
+## Configuration & Secrets
+
+.env
+.env.local
+config.json
+# Allow example environment files
+!.env.example
+
+
+## IDE & System
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+
+## Logs & Debugging
+
+*.log
+logs/
+debug/
+profiling/
