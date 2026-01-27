@@ -26,7 +26,6 @@ artifacts/release_demo/**/*.csv
 
 
 ## Model & Data Files (General Safety)
-
 # Block any heavy files accidentally placed in other folders
 *.pt
 *.pth
@@ -41,7 +40,6 @@ artifacts/release_demo/**/*.csv
 
 
 ## Configuration & Secrets
-
 .env
 .env.local
 config.json
@@ -50,7 +48,6 @@ config.json
 
 
 ## IDE & System
-
 .vscode/
 .idea/
 .DS_Store
@@ -58,7 +55,6 @@ Thumbs.db
 
 
 ## Logs & Debugging
-
 *.log
 logs/
 debug/
