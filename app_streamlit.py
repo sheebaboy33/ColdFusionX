@@ -5,7 +5,6 @@ import plotly.express as px
 import torch
 import os
 
-
 # Import our backend system
 from coldfusionx.inference.manager import InferenceManager
 
@@ -19,7 +18,7 @@ st.set_page_config(
 )
 
 
-# Custom CSS for "Academic" look
+# CSS for "Academic" look
 st.markdown("""
 <style>
     .reportview-container { background: #f0f2f6 }
@@ -80,6 +79,20 @@ st.sidebar.info("Modify these to test model robustness.")
 force_cold = st.sidebar.toggle("❄️ Force Cold-Start", value=False, 
     help="Ignore historical ID data and force model to use Meta-Embeddings (Text/Image/Time) only.")
 
+# SCENE SIMULATOR
+st.sidebar.header("3. Context Injection")
+unique_scenes = sorted(demo_df['scene_id'].unique())
+current_scene = case_data.get('scene_id', 'Unknown') # Safe Get
+
+# If current scene isn't in unique list (rare), default to first
+idx_default = unique_scenes.index(current_scene) if current_scene in unique_scenes else 0
+override_scene = st.sidebar.selectbox("Simulate Scenario:", unique_scenes, index=idx_default)
+
+# Look up the numeric index for the selected scene string
+# We filter the dataframe to find the matching scene_id, then grab the scene_idx
+scene_row = demo_df[demo_df['scene_id'] == override_scene].iloc[0]
+override_scene_idx = scene_row.get('scene_idx', 0)
+
 st.sidebar.divider()
 st.sidebar.markdown("### Thesis Info")
 st.sidebar.caption("Project: ColdFusionX\nStudent: Sharm Fernando\nUniversity of Westminster")
@@ -90,7 +103,7 @@ st.sidebar.caption("Project: ColdFusionX\nStudent: Sharm Fernando\nUniversity of
 col1, col2 = st.columns([3, 1])
 with col1:
     st.title("📢 Ad Campaign Diagnostic")
-    st.markdown(f"**Scenario Context:** `{case_data['scene_id']}`")
+    st.markdown(f"**Scenario Context:** `{override_scene}`")
 with col2:
     if force_cold:
         st.error("MODE: COLD START (Meta-Embedding)")
@@ -110,9 +123,9 @@ with left_col:
     batch = manager.store.get_case_by_index(selected_index)
     
     with st.container(border=True):
-        st.markdown(f"**Item ID:** `{case_data['item_id']}`")
-        st.markdown(f"**User ID:** `{case_data['user_id']}`")
-        st.markdown(f"**Time:** `{case_data['timestamp']}`")
+        st.markdown(f"**Item ID:** `{case_data.get('item_id', 'Unknown')}`")
+        st.markdown(f"**User ID:** `{case_data.get('user_id', 'Unknown')}`")
+        st.markdown(f"**Time:** `{case_data.get('timestamp', 'Unknown')}`")
         
         st.markdown("### 🖼️ Ad Creative (Neural View)")
         st.caption("Since raw images are private/large, we visualize the **ViT Embedding** (What the AI sees).")
