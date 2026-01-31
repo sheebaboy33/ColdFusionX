@@ -281,3 +281,17 @@ with tab3:
     fig_gates = px.bar(df_gates, x='Expert', y='Weight', 
                        title=f"Expert Activation for Scenario: {override_scene}")
     st.plotly_chart(fig_gates, use_container_width=True)
+
+
+# DEVELOPER INSPECTOR
+with st.expander("🛠️ Developer / Tensor Inspector"):
+    st.markdown("### Raw Input Tensors")
+    st.write("These are the actual vectors flowing into the PyTorch model:")
+    
+    t_col1, t_col2 = st.columns(2)
+    with t_col1:
+        st.code(f"User ID Idx: {batch['user_idx'].item()}\nItem ID Idx: {batch['item_idx'].item()}\nScene Idx: {batch['scene_idx'].item()}")
+        st.code(f"Text Emb Shape: {list(batch['text_vec'].shape)}")
+    with t_col2:
+        st.code(f"Time Features: {batch['time_vec'].tolist()}")
+        st.code(f"Image Emb Shape: {list(batch['image_vec'].shape)}")
