@@ -18,6 +18,7 @@ class DemoFeatureStore:
             raise FileNotFoundError(f"Demo Data not found at {df_path}. Did artifacts unzip correctly?")
         
         self.demo_df = pd.read_parquet(df_path).reset_index(drop=True)
+        print(f"[FeatureStore] Loaded {len(self.demo_df)} rows.")
         
         # 2. Load Tensors (CPU)
         # We load these entirely into memory because they are small (only ~395 rows)
@@ -32,9 +33,38 @@ class DemoFeatureStore:
 
 
     def list_cases(self):
-        """Returns a summary dataframe for the UI dropdown"""
-        # Return cols: index, user_id, item_id, scene_id, timestamp
-        return self.demo_df[["user_id", "item_id", "scene_id", "timestamp"]].copy()
+        """
+        Returns summary DF. Auto-creates 'scene_id' string from numeric 'scene_idx'.
+        """
+        df = self.demo_df.copy()
+        
+        # 1. Ensure User/Item IDs exist as strings
+        if "user_id" not in df.columns and "user_id_idx" in df.columns:
+            df["user_id"] = df["user_id_idx"].astype(str)
+        if "item_id" not in df.columns and "item_id_idx" in df.columns:
+            df["item_id"] = df["item_id_idx"].astype(str)
+
+        # 2. Ensure Scene ID (String) and Scene IDX (Int) exist
+        # we turn them into "Scenario 0", "Scenario 1"...
+        if "scene_idx" in df.columns:
+            # We have the index, ensure we have a string Label
+            if "scene_id" not in df.columns:
+                df["scene_id"] = "Scenario " + df["scene_idx"].astype(str)
+        elif "scene_id_idx" in df.columns:
+            # Handle alternative naming
+            df["scene_idx"] = df["scene_id_idx"]
+            df["scene_id"] = "Scenario " + df["scene_id_idx"].astype(str)
+        else:
+            # Fallback
+            df["scene_idx"] = 0
+            df["scene_id"] = "Unknown"
+
+        # 3. Ensure Timestamp
+        if "timestamp" not in df.columns:
+             df["timestamp"] = "2025-01-01"
+
+        # Return ALL columns so app can find indices
+        return df
 
 
     def get_case_by_index(self, local_index: int, device: str = "cpu") -> Dict[str, Any]:
@@ -45,7 +75,17 @@ class DemoFeatureStore:
         if local_index >= len(self.demo_df):
             raise ValueError(f"Index {local_index} out of bounds.")
 
+        # Use the raw DF for tensor extraction to match original indices
         row = self.demo_df.iloc[local_index]
+
+        # Safe extraction of indices
+        u_idx = row.get("user_id_idx", 0)
+        i_idx = row.get("item_id_idx", 0)
+
+        # Handle Scene Index Robustly
+        if "scene_idx" in row: s_idx = row["scene_idx"]
+        elif "scene_id_idx" in row: s_idx = row["scene_id_idx"]
+        else: s_idx = 0
         
         # Prepare Batch (Add Batch Dimension [1, ...])
         batch = {
@@ -71,5 +111,6 @@ class DemoFeatureStore:
 
 
     def get_raw_metadata(self, local_index: int):
-        """Returns the human-readable strings (Headline, Image Path) for the UI"""
-        return self.demo_df.iloc[local_index].to_dict()
+        """Returns the CLEANED dict (with scene_id string) for UI"""
+        df_clean = self.list_cases()
+        return df_clean.iloc[local_index].to_dict()

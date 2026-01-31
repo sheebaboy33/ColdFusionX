@@ -5,7 +5,6 @@ import plotly.express as px
 import torch
 import os
 
-
 # Import our backend system
 from coldfusionx.inference.manager import InferenceManager
 
@@ -19,7 +18,7 @@ st.set_page_config(
 )
 
 
-# Custom CSS for "Academic" look
+# CSS for "Academic" look
 st.markdown("""
 <style>
     .reportview-container { background: #f0f2f6 }
@@ -80,9 +79,23 @@ st.sidebar.info("Modify these to test model robustness.")
 force_cold = st.sidebar.toggle("❄️ Force Cold-Start", value=False, 
     help="Ignore historical ID data and force model to use Meta-Embeddings (Text/Image/Time) only.")
 
+# SCENE SIMULATOR
+st.sidebar.header("3. Context Injection")
+unique_scenes = sorted(demo_df['scene_id'].unique())
+current_scene = case_data.get('scene_id', 'Unknown') # Safe Get
+
+# If current scene isn't in unique list (rare), default to first
+idx_default = unique_scenes.index(current_scene) if current_scene in unique_scenes else 0
+override_scene = st.sidebar.selectbox("Simulate Scenario:", unique_scenes, index=idx_default)
+
+# Look up the numeric index for the selected scene string
+# We filter the dataframe to find the matching scene_id, then grab the scene_idx
+scene_row = demo_df[demo_df['scene_id'] == override_scene].iloc[0]
+override_scene_idx = scene_row.get('scene_idx', 0)
+
 st.sidebar.divider()
 st.sidebar.markdown("### Thesis Info")
-st.sidebar.caption("Project: ColdFusionX\nStudent: Sharm Fernando\nUniversity of Westminster")
+st.sidebar.caption("Project: ColdFusionX \n\nStudent: Sharm Fernando\n\nUniversity of Westminster")
 
 
 ## MAIN LAYOUT
@@ -90,7 +103,7 @@ st.sidebar.caption("Project: ColdFusionX\nStudent: Sharm Fernando\nUniversity of
 col1, col2 = st.columns([3, 1])
 with col1:
     st.title("📢 Ad Campaign Diagnostic")
-    st.markdown(f"**Scenario Context:** `{case_data['scene_id']}`")
+    st.markdown(f"**Scenario Context:** `{override_scene}`")
 with col2:
     if force_cold:
         st.error("MODE: COLD START (Meta-Embedding)")
@@ -109,10 +122,16 @@ with left_col:
     # We grab the batch *before* inference so we can visualize inputs
     batch = manager.store.get_case_by_index(selected_index)
     
+    # Get the specific row from the DataFrame which we KNOW has the correct data
+    # (We use .iloc to access by integer position, matching selected_index)
+    selected_row = demo_df.iloc[selected_index]
+
     with st.container(border=True):
-        st.markdown(f"**Item ID:** `{case_data['item_id']}`")
-        st.markdown(f"**User ID:** `{case_data['user_id']}`")
-        st.markdown(f"**Time:** `{case_data['timestamp']}`")
+        # Access the DataFrame columns directly
+        st.markdown(f"**Item ID:** `{selected_row['item_id']}`")
+        st.markdown(f"**User ID:** `{selected_row['user_id']}`")
+        # For timestamp, check if it exists in DF, otherwise fall back to case_data
+        st.markdown(f"**Time:** `{selected_row.get('timestamp', case_data.get('timestamp', 'Unknown'))}`")
         
         st.markdown("### 🖼️ Ad Creative (Neural View)")
         st.caption("Since raw images are private/large, we visualize the **ViT Embedding** (What the AI sees).")
@@ -182,18 +201,26 @@ with right_col:
         meta_attn = manager.model.get_last_meta_attention()
         gates = manager.model.get_last_gates()
 
-    # Gauge Chart
+    # GAUGE CHART (Calibrated for AdTech)
+    # We set the Max range to 0.30 (30%) instead of 1.0 (100%)
+    # because >30% CTR is practically impossible in real life.
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
-        value = prob * 100,
+        value = prob * 100, # Convert to percentage (e.g., 0.15 -> 15.0)
         title = {'text': "Predicted CTR %"},
         gauge = {
-            'axis': {'range': [0, 100]},
+            'axis': {'range': [0, 30]}, # CHANGED FROM 100 TO 30
             'bar': {'color': "#2e86c1"},
             'steps': [
-                {'range': [0, 20], 'color': "#f9e79f"},
-                {'range': [20, 50], 'color': "#abebc6"},
-                {'range': [50, 100], 'color': "#82e0aa"}],
+                {'range': [0, 5], 'color': "#f9e79f"},   # 0-5%: Low/Normal
+                {'range': [5, 15], 'color': "#abebc6"},  # 5-15%: Good
+                {'range': [15, 30], 'color': "#82e0aa"}  # 15%+: Viral/High
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': 25
+            }
         }
     ))
     st.plotly_chart(fig, use_container_width=True)
@@ -249,8 +276,22 @@ with tab3:
     st.markdown("How did the **Scenario-Aware MMoE** route this sample?")
     
     gate_vals = gates.cpu().numpy().flatten()
-    df_gates = pd.DataFrame({'Expert': [f'Expert {i+1}' for i in range(len(gate_vals))], 'Weight': gate_vals})
+    df_gates = pd.DataFrame({'Expert': [f'Expert {i}' for i in range(len(gate_vals))], 'Weight': gate_vals})
     
     fig_gates = px.bar(df_gates, x='Expert', y='Weight', 
-                       title=f"Expert Activation for Scenario: {case_data['scene_id']}")
+                       title=f"Expert Activation for Scenario: {override_scene}")
     st.plotly_chart(fig_gates, use_container_width=True)
+
+
+# DEVELOPER INSPECTOR
+with st.expander("🛠️ Developer / Tensor Inspector"):
+    st.markdown("### Raw Input Tensors")
+    st.write("These are the actual vectors flowing into the PyTorch model:")
+    
+    t_col1, t_col2 = st.columns(2)
+    with t_col1:
+        st.code(f"User ID Idx: {batch['user_idx'].item()}\nItem ID Idx: {batch['item_idx'].item()}\nScene Idx: {batch['scene_idx'].item()}")
+        st.code(f"Text Emb Shape: {list(batch['text_vec'].shape)}")
+    with t_col2:
+        st.code(f"Time Features: {batch['time_vec'].tolist()}")
+        st.code(f"Image Emb Shape: {list(batch['image_vec'].shape)}")
