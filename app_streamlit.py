@@ -262,8 +262,8 @@ with tab3:
     st.markdown("How did the **Scenario-Aware MMoE** route this sample?")
     
     gate_vals = gates.cpu().numpy().flatten()
-    df_gates = pd.DataFrame({'Expert': [f'Expert {i+1}' for i in range(len(gate_vals))], 'Weight': gate_vals})
+    df_gates = pd.DataFrame({'Expert': [f'Expert {i}' for i in range(len(gate_vals))], 'Weight': gate_vals})
     
     fig_gates = px.bar(df_gates, x='Expert', y='Weight', 
-                       title=f"Expert Activation for Scenario: {case_data['scene_id']}")
+                       title=f"Expert Activation for Scenario: {override_scene}")
     st.plotly_chart(fig_gates, use_container_width=True)
