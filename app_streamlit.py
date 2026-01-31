@@ -195,18 +195,26 @@ with right_col:
         meta_attn = manager.model.get_last_meta_attention()
         gates = manager.model.get_last_gates()
 
-    # Gauge Chart
+    # GAUGE CHART (Calibrated for AdTech)
+    # We set the Max range to 0.30 (30%) instead of 1.0 (100%)
+    # because >30% CTR is practically impossible in real life.
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
-        value = prob * 100,
+        value = prob * 100, # Convert to percentage (e.g., 0.15 -> 15.0)
         title = {'text': "Predicted CTR %"},
         gauge = {
-            'axis': {'range': [0, 100]},
+            'axis': {'range': [0, 30]}, # CHANGED FROM 100 TO 30
             'bar': {'color': "#2e86c1"},
             'steps': [
-                {'range': [0, 20], 'color': "#f9e79f"},
-                {'range': [20, 50], 'color': "#abebc6"},
-                {'range': [50, 100], 'color': "#82e0aa"}],
+                {'range': [0, 5], 'color': "#f9e79f"},   # 0-5%: Low/Normal
+                {'range': [5, 15], 'color': "#abebc6"},  # 5-15%: Good
+                {'range': [15, 30], 'color': "#82e0aa"}  # 15%+: Viral/High
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': 25
+            }
         }
     ))
     st.plotly_chart(fig, use_container_width=True)
