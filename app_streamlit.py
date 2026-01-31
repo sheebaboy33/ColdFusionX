@@ -38,7 +38,7 @@ st.markdown("""
 # INITIALIZE SYSTEM (Cached)
 @st.cache_resource
 def load_system():
-    # Points to our extracted artifacts
+    # Points to the extracted artifacts
     ARTIFACT_PATH = os.path.join(os.getcwd(), "artifacts", "release_demo")
     
     if not os.path.exists(ARTIFACT_PATH):
@@ -79,6 +79,8 @@ st.sidebar.info("Modify these to test model robustness.")
 force_cold = st.sidebar.toggle("❄️ Force Cold-Start", value=False, 
     help="Ignore historical ID data and force model to use Meta-Embeddings (Text/Image/Time) only.")
 
+st.sidebar.divider()
+
 # SCENE SIMULATOR
 st.sidebar.header("3. Context Injection")
 unique_scenes = sorted(demo_df['scene_id'].unique())
@@ -99,6 +101,30 @@ st.sidebar.caption("Project: ColdFusionX \n\nStudent: Sharm Fernando\n\nUniversi
 
 
 ## MAIN LAYOUT
+
+# 1. CENTRALIZED DATA LOADING & STATE INJECTION
+# We load the data ONCE here so all downstream components (Visuals & Model) 
+# see the exact same "Simulation State".
+
+# A. Get the Base Data
+batch = manager.store.get_case_by_index(selected_index)
+
+# B. APPLY SIDEBAR OVERRIDES (The "Simulation" Logic)
+# Override 1: Scenario Context
+# We overwrite the historical scene with the one selected in the sidebar.
+batch['scene_idx'] = torch.tensor([override_scene_idx], dtype=torch.long)
+
+# Override 2: Cold-Start Toggle
+# If forced, we set item_count to 0. This tells the model: "We have no history for this item."
+if force_cold:
+    batch['item_count'] = torch.tensor([0], dtype=torch.long)
+else:
+    # Ensure it's treated as Warm (>=1) if not forced. 
+    # We use 1 as a safe default for "Warm" if the original data was 0.
+    if batch['item_count'].item() == 0:
+        batch['item_count'] = torch.tensor([1], dtype=torch.long)
+
+
 # -- HEADER --
 col1, col2 = st.columns([3, 1])
 with col1:
@@ -115,36 +141,43 @@ st.divider()
 # -- CONTENT PREVIEW (Left) & PREDICTION (Right) --
 left_col, right_col = st.columns([1, 1])
 
+# 2. RUN INFERENCE (Global)
+# We run this once so both columns can share the results if needed
+with torch.no_grad():
+    results = manager.model(
+        user_idx=batch["user_idx"],
+        item_idx=batch["item_idx"],
+        scene_idx=batch["scene_idx"],  # Uses the OVERRIDE
+        text_vec=batch["text_vec"],
+        image_vec=batch["image_vec"],
+        time_vec=batch["time_vec"],
+        item_count=batch["item_count"] # Uses the OVERRIDE
+    )
+    prob = torch.sigmoid(results).item()
+    attn = manager.model.get_last_fusion_attention()
+    meta_attn = manager.model.get_last_meta_attention()
+    gates = manager.model.get_last_gates()
+
+
 with left_col:
     st.subheader("High-Level Campaign Details")
     
-    # 1 -> Prepare Data for Display
-    # We grab the batch *before* inference so we can visualize inputs
-    batch = manager.store.get_case_by_index(selected_index)
-    
-    # Get the specific row from the DataFrame which we KNOW has the correct data
-    # (We use .iloc to access by integer position, matching selected_index)
+    # Get the specific row from the DataFrame for static metadata
     selected_row = demo_df.iloc[selected_index]
 
     with st.container(border=True):
-        # Access the DataFrame columns directly
         st.markdown(f"**Item ID:** `{selected_row['item_id']}`")
         st.markdown(f"**User ID:** `{selected_row['user_id']}`")
-        # For timestamp, check if it exists in DF, otherwise fall back to case_data
         st.markdown(f"**Time:** `{selected_row.get('timestamp', case_data.get('timestamp', 'Unknown'))}`")
         
         st.markdown("### 🖼️ Ad Creative (Neural View)")
         st.caption("Since raw images are private/large, we visualize the **ViT Embedding** (What the AI sees).")
         
-        # 2 -> VISUALIZE THE EMBEDDING
-        # The image_vec is size [1, 768]. We reshape it to [24, 32] to make a 2D grid.
+        # VISUALIZE THE EMBEDDING
         img_tensor = batch['image_vec'].squeeze().cpu().numpy()
         
         if img_tensor.shape[0] == 768:
-            # Reshape 1D vector -> 2D Grid for visualization
             img_grid = img_tensor.reshape(24, 32)
-            
-            # Create a cool heatmap
             fig_img = px.imshow(
                 img_grid, 
                 color_continuous_scale='Magma',
@@ -154,67 +187,34 @@ with left_col:
             fig_img.update_layout(
                 margin=dict(l=0, r=0, t=0, b=0),
                 height=300,
-                coloraxis_showscale=False # Clean look
+                coloraxis_showscale=False 
             )
             fig_img.update_xaxes(showticklabels=False)
             fig_img.update_yaxes(showticklabels=False)
-            
             st.plotly_chart(fig_img, use_container_width=True)
         else:
             st.warning(f"Embedding shape {img_tensor.shape} not standard (768). Cannot visualize.")
 
         st.markdown("### 📝 Text Context")
-        # BERT Embedding Stats (since we don't have raw text)
         txt_tensor = batch['text_vec'].squeeze().cpu().numpy()
-        st.bar_chart(txt_tensor[:50]) # Show first 50 dims of BERT
+        st.bar_chart(txt_tensor[:50]) 
         st.caption(f"BERT Text Embedding (First 50/768 dims). Mean Activation: {txt_tensor.mean():.4f}")
 
 with right_col:
     st.subheader("🚀 Model Prediction")
     
-    # RUN INFERENCE LIVE
-    # We pass the index and the "Force Cold" toggle state
-    # Note: InferenceManager needs to support the 'force_cold' flag logic. (double check on this)
-    # We will hack it here: if force_cold is True, we modify the batch inside the manager or passed args.
-    
-    # Actually, let's just update the manager call to handle this override if we didn't add it yet.
-    # For now, we assume the manager handles standard inference. 
-    # To support the toggle, we'll manually patch the 'item_count' in the logic below.
-    
-    batch = manager.store.get_case_by_index(selected_index)
-    if force_cold:
-        batch['item_count'] = torch.tensor([0]) # Force Zero Count -> Cold Start
-    
-    # Run Prediction
-    with torch.no_grad():
-        results = manager.model(
-            user_idx=batch["user_idx"],
-            item_idx=batch["item_idx"],
-            scene_idx=batch["scene_idx"],
-            text_vec=batch["text_vec"],
-            image_vec=batch["image_vec"],
-            time_vec=batch["time_vec"],
-            item_count=batch["item_count"]
-        )
-        prob = torch.sigmoid(results).item()
-        attn = manager.model.get_last_fusion_attention()
-        meta_attn = manager.model.get_last_meta_attention()
-        gates = manager.model.get_last_gates()
-
-    # GAUGE CHART (Calibrated for AdTech)
-    # We set the Max range to 0.30 (30%) instead of 1.0 (100%)
-    # because >30% CTR is practically impossible in real life.
+    # GAUGE CHART 
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
-        value = prob * 100, # Convert to percentage (e.g., 0.15 -> 15.0)
+        value = prob * 100, 
         title = {'text': "Predicted CTR %"},
         gauge = {
-            'axis': {'range': [0, 30]}, # CHANGED FROM 100 TO 30
+            'axis': {'range': [0, 30]}, 
             'bar': {'color': "#2e86c1"},
             'steps': [
-                {'range': [0, 5], 'color': "#f9e79f"},   # 0-5%: Low/Normal
-                {'range': [5, 15], 'color': "#abebc6"},  # 5-15%: Good
-                {'range': [15, 30], 'color': "#82e0aa"}  # 15%+: Viral/High
+                {'range': [0, 5], 'color': "#f9e79f"},   
+                {'range': [5, 15], 'color': "#abebc6"},  
+                {'range': [15, 30], 'color': "#82e0aa"}  
             ],
             'threshold': {
                 'line': {'color': "red", 'width': 4},
@@ -245,7 +245,9 @@ tab1, tab2, tab3 = st.tabs(["Modality Importance", "Cold-Start Meta-Weights", "S
 # --- TAB 1: MODALITY ATTENTION ---
 with tab1:
     st.markdown("Which data source contributed most to the decision?")
-    
+    if force_cold:
+        st.warning("⚠️ **Cold-Start Active:** The 'id' weight below represents the **Synthetic Meta-Embedding**, not the historical ID!")
+
     # Convert attention dict to DF
     attn_data = {k: v.item() for k, v in attn.items()}
     df_attn = pd.DataFrame([attn_data])
@@ -255,9 +257,6 @@ with tab1:
                       title="Fusion Layer Attention Weights")
     fig_attn.update_layout(showlegend=False)
     st.plotly_chart(fig_attn, use_container_width=True)
-    
-    if force_cold:
-        st.info("💡 Notice: ID embedding might still have weight, but it is purely synthesized from content!")
 
 # --- TAB 2: META-EMBEDDING ---
 with tab2:
@@ -276,7 +275,10 @@ with tab3:
     st.markdown("How did the **Scenario-Aware MMoE** route this sample?")
     
     gate_vals = gates.cpu().numpy().flatten()
-    df_gates = pd.DataFrame({'Expert': [f'Expert {i}' for i in range(len(gate_vals))], 'Weight': gate_vals})
+    # Create labels Expert 0, Expert 1...
+    expert_labels = [f'Expert {i}' for i in range(len(gate_vals))]
+    
+    df_gates = pd.DataFrame({'Expert': expert_labels, 'Weight': gate_vals})
     
     fig_gates = px.bar(df_gates, x='Expert', y='Weight', 
                        title=f"Expert Activation for Scenario: {override_scene}")
@@ -285,13 +287,14 @@ with tab3:
 
 # DEVELOPER INSPECTOR
 with st.expander("🛠️ Developer / Tensor Inspector"):
-    st.markdown("### Raw Input Tensors")
+    st.markdown("### Raw Input Tensors (Live Simulation)")
     st.write("These are the actual vectors flowing into the PyTorch model:")
     
     t_col1, t_col2 = st.columns(2)
     with t_col1:
-        st.code(f"User ID Idx: {batch['user_idx'].item()}\nItem ID Idx: {batch['item_idx'].item()}\nScene Idx: {batch['scene_idx'].item()}")
-        st.code(f"Text Emb Shape: {list(batch['text_vec'].shape)}")
+        st.code(f"User ID Idx: {batch['user_idx'].item()}")
+        st.code(f"Item ID Idx: {batch['item_idx'].item()} (Count: {batch['item_count'].item()})")
+        st.code(f"Scene Idx: {batch['scene_idx'].item()} (Override Active)")
     with t_col2:
-        st.code(f"Time Features: {batch['time_vec'].tolist()}")
+        st.code(f"Text Emb Shape: {list(batch['text_vec'].shape)}")
         st.code(f"Image Emb Shape: {list(batch['image_vec'].shape)}")
