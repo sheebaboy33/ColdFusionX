@@ -18,6 +18,7 @@ class DemoFeatureStore:
             raise FileNotFoundError(f"Demo Data not found at {df_path}. Did artifacts unzip correctly?")
         
         self.demo_df = pd.read_parquet(df_path).reset_index(drop=True)
+        print(f"[FeatureStore] Loaded {len(self.demo_df)} rows.")
         
         # 2. Load Tensors (CPU)
         # We load these entirely into memory because they are small (only ~395 rows)
@@ -74,7 +75,17 @@ class DemoFeatureStore:
         if local_index >= len(self.demo_df):
             raise ValueError(f"Index {local_index} out of bounds.")
 
+        # Use the raw DF for tensor extraction to match original indices
         row = self.demo_df.iloc[local_index]
+
+        # Safe extraction of indices
+        u_idx = row.get("user_id_idx", 0)
+        i_idx = row.get("item_id_idx", 0)
+
+        # Handle Scene Index Robustly
+        if "scene_idx" in row: s_idx = row["scene_idx"]
+        elif "scene_id_idx" in row: s_idx = row["scene_id_idx"]
+        else: s_idx = 0
         
         # Prepare Batch (Add Batch Dimension [1, ...])
         batch = {
@@ -100,5 +111,6 @@ class DemoFeatureStore:
 
 
     def get_raw_metadata(self, local_index: int):
-        """Returns the human-readable strings (Headline, Image Path) for the UI"""
-        return self.demo_df.iloc[local_index].to_dict()
+        """Returns the CLEANED dict (with scene_id string) for UI"""
+        df_clean = self.list_cases()
+        return df_clean.iloc[local_index].to_dict()

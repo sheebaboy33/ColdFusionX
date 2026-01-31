@@ -95,7 +95,7 @@ override_scene_idx = scene_row.get('scene_idx', 0)
 
 st.sidebar.divider()
 st.sidebar.markdown("### Thesis Info")
-st.sidebar.caption("Project: ColdFusionX\nStudent: Sharm Fernando\nUniversity of Westminster")
+st.sidebar.caption("Project: ColdFusionX \n\nStudent: Sharm Fernando\n\nUniversity of Westminster")
 
 
 ## MAIN LAYOUT
@@ -122,10 +122,16 @@ with left_col:
     # We grab the batch *before* inference so we can visualize inputs
     batch = manager.store.get_case_by_index(selected_index)
     
+    # Get the specific row from the DataFrame which we KNOW has the correct data
+    # (We use .iloc to access by integer position, matching selected_index)
+    selected_row = demo_df.iloc[selected_index]
+
     with st.container(border=True):
-        st.markdown(f"**Item ID:** `{case_data.get('item_id', 'Unknown')}`")
-        st.markdown(f"**User ID:** `{case_data.get('user_id', 'Unknown')}`")
-        st.markdown(f"**Time:** `{case_data.get('timestamp', 'Unknown')}`")
+        # Access the DataFrame columns directly
+        st.markdown(f"**Item ID:** `{selected_row['item_id']}`")
+        st.markdown(f"**User ID:** `{selected_row['user_id']}`")
+        # For timestamp, check if it exists in DF, otherwise fall back to case_data
+        st.markdown(f"**Time:** `{selected_row.get('timestamp', case_data.get('timestamp', 'Unknown'))}`")
         
         st.markdown("### 🖼️ Ad Creative (Neural View)")
         st.caption("Since raw images are private/large, we visualize the **ViT Embedding** (What the AI sees).")
