@@ -260,15 +260,54 @@ with tab1:
 
 # --- TAB 2: META-EMBEDDING ---
 with tab2:
-    st.markdown("How was the **Cold-Start Item ID** generated?")
-    st.markdown("The Meta-Generator synthesizes a proxy ID from these features:")
-    
-    meta_data = {k: v.item() for k, v in meta_attn.items()}
-    df_meta = pd.DataFrame([meta_data])
-    
-    fig_meta = px.pie(values=list(meta_data.values()), names=list(meta_data.keys()), 
-                      title="Meta-Embedding Composition")
-    st.plotly_chart(fig_meta, use_container_width=True)
+    # 1. LOGIC CHECK: Is the Meta-Embedder actually being used?
+    # It is used if:
+    # A) The user toggled "Force Cold-Start" (force_cold == True)
+    # B) The item has no history (batch['item_count'] == 0)
+    is_using_meta = force_cold or (batch['item_count'].item() == 0)
+
+    if not is_using_meta:
+        # CASE: WARM START
+        st.info("🔥 **Warm Start Active:** The model is using the historical Item ID Embedding directly.")
+        st.markdown("To see how the **Meta-Generator** would synthesize a new ID for this item, toggle **❄️ Force Cold-Start** in the sidebar.")
+        
+        # Optional: Show a grayed-out or blurred placeholder to hint at functionality
+        st.caption("(Meta-Weights are inactive)")
+        
+    else:
+        # CASE: COLD START (Show the Chart)
+        st.markdown("How was the **Cold-Start Item ID** generated?")
+        st.markdown("The Meta-Generator synthesized a proxy ID using this modality mix:")
+        
+        # For Chart Visualization
+        meta_raw = {k: v.item() for k, v in meta_attn.items()}
+        
+        # Normalize for visualization (Safety check for tiny numbers)
+        total_weight = sum(meta_raw.values())
+        if total_weight == 0:
+            meta_norm = {k: 0.33 for k in meta_raw}
+        else:
+            meta_norm = {k: v / total_weight for k, v in meta_raw.items()}
+        
+        df_meta = pd.DataFrame({
+            'Modality': list(meta_norm.keys()),
+            'Contribution': list(meta_norm.values())
+        })
+        
+        fig_meta = px.pie(
+            df_meta, 
+            values='Contribution', 
+            names='Modality',
+            title="Meta-Embedding Composition",
+            color='Modality',
+            # Using specific colors helps consistent readability
+            color_discrete_map={'text':'#1f77b4', 'image':'#aec7e8', 'time':'#ff7f0e'} 
+        )
+        st.plotly_chart(fig_meta, use_container_width=True)
+        
+        with st.expander("View Raw Weights"):
+            st.json(meta_raw)
+
 
 # --- TAB 3: EXPERT GATES ---
 with tab3:
