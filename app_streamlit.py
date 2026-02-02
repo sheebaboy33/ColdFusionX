@@ -101,30 +101,6 @@ st.sidebar.caption("Project: ColdFusionX \n\nStudent: Sharm Fernando\n\nUniversi
 
 
 ## MAIN LAYOUT
-
-# 1. CENTRALIZED DATA LOADING & STATE INJECTION
-# We load the data ONCE here so all downstream components (Visuals & Model) 
-# see the exact same "Simulation State".
-
-# A. Get the Base Data
-batch = manager.store.get_case_by_index(selected_index)
-
-# B. APPLY SIDEBAR OVERRIDES (The "Simulation" Logic)
-# Override 1: Scenario Context
-# We overwrite the historical scene with the one selected in the sidebar.
-batch['scene_idx'] = torch.tensor([override_scene_idx], dtype=torch.long)
-
-# Override 2: Cold-Start Toggle
-# If forced, we set item_count to 0. This tells the model: "We have no history for this item."
-if force_cold:
-    batch['item_count'] = torch.tensor([0], dtype=torch.long)
-else:
-    # Ensure it's treated as Warm (>=1) if not forced. 
-    # We use 1 as a safe default for "Warm" if the original data was 0.
-    if batch['item_count'].item() == 0:
-        batch['item_count'] = torch.tensor([1], dtype=torch.long)
-
-
 # -- HEADER --
 col1, col2 = st.columns([3, 1])
 with col1:
@@ -141,23 +117,41 @@ st.divider()
 # -- CONTENT PREVIEW (Left) & PREDICTION (Right) --
 left_col, right_col = st.columns([1, 1])
 
-# 2. RUN INFERENCE (Global)
-# We run this once so both columns can share the results if needed
+# 1. PREPARE DATA (Centralized)
+batch = manager.store.get_case_by_index(selected_index)
+
+# Apply Overrides
+batch['scene_idx'] = torch.tensor([override_scene_idx], dtype=torch.long)
+if force_cold:
+    batch['item_count'] = torch.tensor([0], dtype=torch.long)
+else:
+    if batch['item_count'].item() == 0:
+        batch['item_count'] = torch.tensor([1], dtype=torch.long)
+
+# 2. RUN INFERENCE (With STRICT Normalization)
 with torch.no_grad():
+    # Explicit L2 Normalization
+    # We normalize Text and Image to Unit Vectors (Length=1.0).
+    # This prevents the "loudest" vector from drowning out the others.
+    # Note: We do NOT normalize Time, matching your Debugger success.
+    norm_text = torch.nn.functional.normalize(batch["text_vec"], p=2, dim=1)
+    norm_image = torch.nn.functional.normalize(batch["image_vec"], p=2, dim=1)
+    norm_time = torch.nn.functional.normalize(batch["time_vec"], p=2, dim=1)
+    
     results = manager.model(
         user_idx=batch["user_idx"],
         item_idx=batch["item_idx"],
-        scene_idx=batch["scene_idx"],  # Uses the OVERRIDE
-        text_vec=batch["text_vec"],
-        image_vec=batch["image_vec"],
-        time_vec=batch["time_vec"],
-        item_count=batch["item_count"] # Uses the OVERRIDE
+        scene_idx=batch["scene_idx"],
+        text_vec=norm_text,   # PASSING NORMALIZED
+        image_vec=norm_image, # PASSING NORMALIZED
+        time_vec=norm_time, # PASSING NORMALIZED
+        item_count=batch["item_count"]
     )
+    
     prob = torch.sigmoid(results).item()
     attn = manager.model.get_last_fusion_attention()
     meta_attn = manager.model.get_last_meta_attention()
     gates = manager.model.get_last_gates()
-
 
 with left_col:
     st.subheader("High-Level Campaign Details")
@@ -196,7 +190,7 @@ with left_col:
             st.warning(f"Embedding shape {img_tensor.shape} not standard (768). Cannot visualize.")
 
         st.markdown("### 📝 Text Context")
-        txt_tensor = batch['text_vec'].squeeze().cpu().numpy()
+        txt_tensor = norm_text.squeeze().cpu().numpy()
         st.bar_chart(txt_tensor[:50]) 
         st.caption(f"BERT Text Embedding (First 50/768 dims). Mean Activation: {txt_tensor.mean():.4f}")
 
@@ -258,56 +252,39 @@ with tab1:
     fig_attn.update_layout(showlegend=False)
     st.plotly_chart(fig_attn, use_container_width=True)
 
-# --- TAB 2: META-EMBEDDING ---
+# --- TAB 2: META-EMBEDDING (Standard Normalization) ---
 with tab2:
-    # 1. LOGIC CHECK: Is the Meta-Embedder actually being used?
-    # It is used if:
-    # A) The user toggled "Force Cold-Start" (force_cold == True)
-    # B) The item has no history (batch['item_count'] == 0)
-    is_using_meta = force_cold or (batch['item_count'].item() == 0)
+    is_meta_active = force_cold or (batch['item_count'].item() == 0)
 
-    if not is_using_meta:
-        # CASE: WARM START
-        st.info("🔥 **Warm Start Active:** The model is using the historical Item ID Embedding directly.")
-        st.markdown("To see how the **Meta-Generator** would synthesize a new ID for this item, toggle **❄️ Force Cold-Start** in the sidebar.")
-        
-        # Optional: Show a grayed-out or blurred placeholder to hint at functionality
-        st.caption("(Meta-Weights are inactive)")
-        
+    if not is_meta_active:
+        st.info("🔥 **Warm Start Active**")
+        st.markdown("To see how the **Meta-Generator** would synthesize a new ID for this item, toggle **❄️ Force Cold-Start**.")
     else:
-        # CASE: COLD START (Show the Chart)
         st.markdown("How was the **Cold-Start Item ID** generated?")
         st.markdown("The Meta-Generator synthesized a proxy ID using this modality mix:")
         
-        # For Chart Visualization
+        # Standard Visualization 
         meta_raw = {k: v.item() for k, v in meta_attn.items()}
-        
-        # Normalize for visualization (Safety check for tiny numbers)
         total_weight = sum(meta_raw.values())
-        if total_weight == 0:
+        
+        if total_weight == 0: 
             meta_norm = {k: 0.33 for k in meta_raw}
         else:
             meta_norm = {k: v / total_weight for k, v in meta_raw.items()}
-        
-        df_meta = pd.DataFrame({
-            'Modality': list(meta_norm.keys()),
-            'Contribution': list(meta_norm.values())
-        })
+            
+        df_meta = pd.DataFrame({'Modality': list(meta_norm.keys()), 'Contribution': list(meta_norm.values())})
         
         fig_meta = px.pie(
             df_meta, 
-            values='Contribution', 
-            names='Modality',
-            title="Meta-Embedding Composition",
+            values='Contribution', names='Modality', title="Meta-Embedding Composition",
             color='Modality',
-            # Using specific colors helps consistent readability
-            color_discrete_map={'text':'#1f77b4', 'image':'#aec7e8', 'time':'#ff7f0e'} 
+            color_discrete_map={'text':'#1f77b4', 'image':'#aec7e8', 'time':'#ff7f0e'}
         )
+        fig_meta.update_traces(textinfo='percent+label')
         st.plotly_chart(fig_meta, use_container_width=True)
         
         with st.expander("View Raw Weights"):
-            st.json(meta_raw)
-
+             st.json(meta_raw)
 
 # --- TAB 3: EXPERT GATES ---
 with tab3:
