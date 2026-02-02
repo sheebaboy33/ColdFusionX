@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import torch
+from PIL import Image
 import os
 
 # Import our backend system
@@ -16,7 +17,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
+# st.snow() # Fun effect! but probably not on this page
 
 # CSS for "Academic" look
 st.markdown("""
@@ -164,9 +165,6 @@ with left_col:
         st.markdown(f"**User ID:** `{selected_row['user_id']}`")
         st.markdown(f"**Time:** `{selected_row.get('timestamp', case_data.get('timestamp', 'Unknown'))}`")
         
-        st.markdown("### 🖼️ Ad Creative (Neural View)")
-        st.caption("Since raw images are private/large, we visualize the **ViT Embedding** (What the AI sees).")
-        
         # VISUALIZE THE EMBEDDING
         # NEW INTERACTIVE IMAGE COMPONENT
         st.markdown("### 🖼️ Ad Creative")
@@ -186,7 +184,17 @@ with left_col:
             img_path = manager.store.get_image_path(item_id_str)
             
             if os.path.exists(img_path):
-                st.image(img_path, caption=f"Raw Input: {item_id_str}.png", use_container_width=True)
+                # --- CENTERING & SIZING TRICK ---
+                # We use 3 columns: [Padding, Content, Padding]
+                # Adjust the middle number (e.g., 3 or 4) to make the image larger or smaller
+                c1, c2, c3 = st.columns([1, 4, 1]) 
+                
+                with c2:
+                    st.image(
+                        img_path, 
+                        caption=f"Raw Input: {item_id_str}.png",
+                        use_container_width=True  # This now fills the MIDDLE column only
+                    )
             else:
                 # Fallback if image is missing
                 st.warning(f"⚠️ Image not found for Item {item_id_str}")
@@ -328,6 +336,8 @@ with tab3:
     fig_gates = px.bar(df_gates, x='Expert', y='Weight', 
                        title=f"Expert Activation for Scenario: {override_scene}")
     st.plotly_chart(fig_gates, use_container_width=True)
+
+st.divider()
 
 
 # DEVELOPER INSPECTOR
