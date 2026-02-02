@@ -168,26 +168,55 @@ with left_col:
         st.caption("Since raw images are private/large, we visualize the **ViT Embedding** (What the AI sees).")
         
         # VISUALIZE THE EMBEDDING
-        img_tensor = batch['image_vec'].squeeze().cpu().numpy()
+        # NEW INTERACTIVE IMAGE COMPONENT
+        st.markdown("### 🖼️ Ad Creative")
         
-        if img_tensor.shape[0] == 768:
-            img_grid = img_tensor.reshape(24, 32)
-            fig_img = px.imshow(
-                img_grid, 
-                color_continuous_scale='Magma',
-                aspect="auto",
-                labels=dict(x="Feature Dim X", y="Feature Dim Y", color="Activation")
-            )
-            fig_img.update_layout(
-                margin=dict(l=0, r=0, t=0, b=0),
-                height=300,
-                coloraxis_showscale=False 
-            )
-            fig_img.update_xaxes(showticklabels=False)
-            fig_img.update_yaxes(showticklabels=False)
-            st.plotly_chart(fig_img, use_container_width=True)
+        # 1. View Mode Switcher
+        view_mode = st.radio(
+            "Visual Mode",
+            ["Human Vision", "Neural View"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
+
+        # 2. Conditional Rendering
+        if view_mode == "Human Vision":
+            # Retrieve path from store
+            item_id_str = str(selected_row['item_id'])
+            img_path = manager.store.get_image_path(item_id_str)
+            
+            if os.path.exists(img_path):
+                st.image(img_path, caption=f"Raw Input: {item_id_str}.png", use_container_width=True)
+            else:
+                # Fallback if image is missing
+                st.warning(f"⚠️ Image not found for Item {item_id_str}")
+                st.caption(f"Checked path: `{img_path}`")
+                st.info("Ensure the 'images' folder exists in your artifacts directory.")
+
         else:
-            st.warning(f"Embedding shape {img_tensor.shape} not standard (768). Cannot visualize.")
+            # NEURAL VIEW (Heatmap)
+            st.caption("ViT Embedding (What the AI sees - 768 dim)")
+            
+            img_tensor = batch['image_vec'].squeeze().cpu().numpy()
+            
+            if img_tensor.shape[0] == 768:
+                img_grid = img_tensor.reshape(24, 32)
+                fig_img = px.imshow(
+                    img_grid, 
+                    color_continuous_scale='Magma',
+                    aspect="auto",
+                    labels=dict(x="Feature Dim X", y="Feature Dim Y", color="Activation")
+                )
+                fig_img.update_layout(
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    height=300,
+                    coloraxis_showscale=False 
+                )
+                fig_img.update_xaxes(showticklabels=False)
+                fig_img.update_yaxes(showticklabels=False)
+                st.plotly_chart(fig_img, use_container_width=True)
+            else:
+                st.warning(f"Embedding shape {img_tensor.shape} not standard (768). Cannot visualize.")
 
         st.markdown("### 📝 Text Context")
         txt_tensor = norm_text.squeeze().cpu().numpy()
@@ -314,3 +343,4 @@ with st.expander("🛠️ Developer / Tensor Inspector"):
     with t_col2:
         st.code(f"Text Emb Shape: {list(batch['text_vec'].shape)}")
         st.code(f"Image Emb Shape: {list(batch['image_vec'].shape)}")
+        st.code(f"Time Emb Shape: {list(batch['time_vec'].shape)}")

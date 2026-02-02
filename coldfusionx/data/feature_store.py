@@ -10,6 +10,9 @@ class DemoFeatureStore:
     to allow for instant playback of specific case studies.
     """
     def __init__(self, artifact_dir: str):
+        # Save this path so we can construct absolute file paths later
+        self.artifact_dir = artifact_dir
+
         self.data_dir = os.path.join(artifact_dir, "data")
         
         # 1. Load Metadata (Pandas)
@@ -30,6 +33,22 @@ class DemoFeatureStore:
         # This helps if we look up by original dataset index
         self.global_indices = np.load(os.path.join(self.data_dir, "demo_indices.npy"))
         self.global_to_local = {gid: loc for loc, gid in enumerate(self.global_indices)}
+
+    def get_image_path(self, item_id: str) -> str:
+        """
+        Returns the absolute path to the raw image file.
+        Logic: artifacts/release_demo/images/{subfolder}/{item_id}.png
+        """
+        sid = str(item_id).strip()
+        
+        # Logic matches your artifact script: first 3 chars define subfolder
+        if len(sid) < 3:
+            subfolder = sid.zfill(3)
+        else:
+            subfolder = sid[:3]
+            
+        # Construct absolute path
+        return os.path.join(self.artifact_dir, "images", subfolder, f"{sid}.png")
 
 
     def list_cases(self):
