@@ -6,7 +6,6 @@ import torch
 from PIL import Image
 import os
 
-# Import our backend system
 from coldfusionx.inference.manager import InferenceManager
 
 
@@ -17,7 +16,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-# st.snow() # Fun effect! but probably not on this page
+# st.snow() # Fun effect! but probably not on this page (try on Home Page)
 
 # CSS for "Academic" look
 st.markdown("""
@@ -56,6 +55,48 @@ if not manager:
 
 # Load the demo metadata dataframe for the sidebar list
 demo_df = manager.store.list_cases()
+
+
+def get_live_attribution(model, batch_data):
+    """
+    Calculates 'Gradient * Input' attribution for the current batch.
+    This approximates SHAP for real-time dashboards.
+    """
+    # 1. Detach and Enable Gradients for Feature Tensors
+    # We clone them to avoid messing up the original inference batch
+    text_v = batch_data["text_vec"].clone().detach().requires_grad_(True)
+    image_v = batch_data["image_vec"].clone().detach().requires_grad_(True)
+    time_v = batch_data["time_vec"].clone().detach().requires_grad_(True)
+    
+    # 2. Run Forward Pass (Re-using the logic from the main inference)
+    # Note: We must re-normalize inside here since we are passing raw tensors
+    norm_text = torch.nn.functional.normalize(text_v, p=2, dim=1)
+    norm_image = torch.nn.functional.normalize(image_v, p=2, dim=1)
+    norm_time = torch.nn.functional.normalize(time_v, p=2, dim=1)
+    
+    results = model(
+        user_idx=batch_data["user_idx"],
+        item_idx=batch_data["item_idx"],
+        scene_idx=batch_data["scene_idx"],
+        text_vec=norm_text,
+        image_vec=norm_image,
+        time_vec=norm_time,
+        item_count=batch_data["item_count"]
+    )
+    
+    # 3. Backward Pass (Calculate Gradients)
+    prob = torch.sigmoid(results)
+    prob.backward()
+    
+    # 4. Compute Importance (Gradient * Input)
+    # We sum the absolute contribution across the embedding dimensions (768)
+    # to get a single scalar "Importance Score" per modality.
+    with torch.no_grad():
+        imp_text = (text_v.grad * text_v).abs().sum().item()
+        imp_image = (image_v.grad * image_v).abs().sum().item()
+        imp_time = (time_v.grad * time_v).abs().sum().item()
+        
+    return {"Text": imp_text, "Image": imp_image, "Time": imp_time}
 
 
 # SIDEBAR: CONTROLS
@@ -184,7 +225,7 @@ with left_col:
             img_path = manager.store.get_image_path(item_id_str)
             
             if os.path.exists(img_path):
-                # --- CENTERING & SIZING TRICK ---
+                # CENTERING & SIZING TRICK
                 # We use 3 columns: [Padding, Content, Padding]
                 # Adjust the middle number (e.g., 3 or 4) to make the image larger or smaller
                 c1, c2, c3 = st.columns([1, 4, 1]) 
@@ -271,7 +312,7 @@ st.divider()
 st.header("🔍 Explainability Diagnostics")
 st.markdown("Why did ColdFusionX make this prediction?")
 
-tab1, tab2, tab3 = st.tabs(["Modality Importance", "Cold-Start Meta-Weights", "Scenario Routing"])
+tab1, tab2, tab3, tab4 = st.tabs(["Modality Importance", "Cold-Start Meta-Weights", "Scenario Routing", "SHAP Values"])
 
 # --- TAB 1: MODALITY ATTENTION ---
 with tab1:
@@ -339,6 +380,52 @@ with tab3:
 
 st.divider()
 
+
+# --- TAB 4: LIVE EXPLAINABILITY ---
+with tab4:
+    st.markdown("### ⚡ Live Feature Attribution")
+    st.markdown("This chart calculates **instance-wise importance** in real-time. Try toggling 'Force Cold-Start' to see how the model shifts its focus!")
+    
+    # 1. Run Live Explanation
+    # We pass the exact 'batch' dictionary that contains your Overrides (Scene/Cold)
+    try:
+        attr_scores = get_live_attribution(manager.model, batch)
+        
+        # 2. Create DataFrame for Plotly
+        df_explain = pd.DataFrame({
+            "Modality": list(attr_scores.keys()),
+            "Importance": list(attr_scores.values())
+        })
+        
+        # Normalize to % for easier reading (Optional)
+        total_imp = df_explain["Importance"].sum()
+        if total_imp > 0:
+            df_explain["Contribution %"] = (df_explain["Importance"] / total_imp) * 100
+        else:
+            df_explain["Contribution %"] = 0
+
+        # 3. Plot
+        fig_explain = px.bar(
+            df_explain, 
+            x="Contribution %", 
+            y="Modality", 
+            orientation='h',
+            title=f"Feature Contribution (Scenario {override_scene})",
+            color="Modality",
+            text_auto='.1f',
+            color_discrete_map={'Text':'#1f77b4', 'Image':'#aec7e8', 'Time':'#ff7f0e'}
+        )
+        fig_explain.update_layout(xaxis_title="Relative Importance (%)")
+        st.plotly_chart(fig_explain, use_container_width=True)
+        
+        # 4. Dynamic Insight
+        top_mod = df_explain.sort_values("Importance", ascending=False).iloc[0]['Modality']
+        st.info(f"💡 For this specific prediction, the model relied most heavily on **{top_mod}**.")
+        
+    except Exception as e:
+        st.error(f"Could not calculate attribution: {str(e)}")
+        st.caption("Check if model gradients are enabled.")
+        
 
 # DEVELOPER INSPECTOR
 with st.expander("🛠️ Developer / Tensor Inspector"):
