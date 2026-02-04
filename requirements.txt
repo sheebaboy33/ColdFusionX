@@ -11,3 +11,4 @@ transformers>=4.30.0
 pydantic>=2.0.0
 pydantic-settings
 pyarrow
+streamlit>=1.25.0

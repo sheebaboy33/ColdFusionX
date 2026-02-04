@@ -22,6 +22,7 @@ artifacts/release_demo/**/*.npy
 artifacts/release_demo/**/*.parquet
 artifacts/release_demo/**/*.json
 artifacts/release_demo/**/*.csv
+artifacts/release_demo/images
 
 
 

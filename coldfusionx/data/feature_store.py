@@ -10,6 +10,9 @@ class DemoFeatureStore:
     to allow for instant playback of specific case studies.
     """
     def __init__(self, artifact_dir: str):
+        # Save this path so we can construct absolute file paths later
+        self.artifact_dir = artifact_dir
+
         self.data_dir = os.path.join(artifact_dir, "data")
         
         # 1. Load Metadata (Pandas)
@@ -25,11 +28,63 @@ class DemoFeatureStore:
         self.text_emb = np.load(os.path.join(self.data_dir, "demo_text_embeddings.npy"))
         self.time_feats = torch.load(os.path.join(self.data_dir, "demo_time_features.pt"), map_location="cpu")
         self.image_emb = torch.load(os.path.join(self.data_dir, "demo_image_embeddings.pt"), map_location="cpu")
+
+        # 3. Load SHAP Summary
+        shap_path = os.path.join(artifact_dir, "explain", "shap_summary.csv")
+        if os.path.exists(shap_path):
+            self.shap_df = pd.read_csv(shap_path)
+            # Create a lookup dictionary for faster access
+            # Key: cohort name, Value: Dict of feature importances
+            self.shap_lookup = self.shap_df.set_index('cohort').to_dict('index')
+        else:
+            print(f"[FeatureStore] Warning: SHAP summary not found at {shap_path}")
+            self.shap_lookup = {}
         
-        # 3. Load Indices to map Global Row ID -> Local Demo Index
+        # 4. Load Indices to map Global Row ID -> Local Demo Index
         # This helps if we look up by original dataset index
         self.global_indices = np.load(os.path.join(self.data_dir, "demo_indices.npy"))
         self.global_to_local = {gid: loc for loc, gid in enumerate(self.global_indices)}
+
+    def get_image_path(self, item_id: str) -> str:
+        """
+        Returns the absolute path to the raw image file.
+        Logic: artifacts/release_demo/images/{subfolder}/{item_id}.png
+        """
+        sid = str(item_id).strip()
+        
+        # Logic matches your artifact script: first 3 chars define subfolder
+        if len(sid) < 3:
+            subfolder = sid.zfill(3)
+        else:
+            subfolder = sid[:3]
+            
+        # Construct absolute path
+        return os.path.join(self.artifact_dir, "images", subfolder, f"{sid}.png")
+    
+    
+    # Add this helper method
+    def get_shap_expectations(self, scene_idx: int, is_cold: bool):
+        """
+        Returns the expected SHAP feature importance for the current scenario.
+        Maps the current state (Scene, Cold) to the pre-computed Cohorts.
+        """
+        # 1. Determine Cohort Key
+        if is_cold:
+            # Fallback to the generic 'cold' cohort
+            cohort_key = "cold_highconf_correct"
+        else:
+            # Fallback to the scene-specific cohort
+            cohort_key = f"scene_{scene_idx}_highconf"
+            
+        # 2. Retrieve Data
+        data = self.shap_lookup.get(cohort_key, None)
+        
+        if not data:
+            # Fallback if specific cohort missing (e.g., scene 5)
+            cohort_key = "alpha_high_highconf" # generic warm
+            data = self.shap_lookup.get(cohort_key, {})
+            
+        return cohort_key, data
 
 
     def list_cases(self):
