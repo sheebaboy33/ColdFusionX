@@ -413,9 +413,6 @@ with tab3:
 st.divider()
 
 
-
-
-
 # DEVELOPER INSPECTOR
 with st.expander("🛠️ Developer / Tensor Inspector"):
     st.markdown("### Raw Input Tensors (Live Simulation)")
