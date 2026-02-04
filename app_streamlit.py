@@ -281,17 +281,18 @@ with right_col:
         value = prob * 100, 
         title = {'text': "Predicted CTR %"},
         gauge = {
-            'axis': {'range': [0, 30]}, 
+            'axis': {'range': [0, 40]}, 
             'bar': {'color': "#2e86c1"},
             'steps': [
-                {'range': [0, 5], 'color': "#f9e79f"},   
-                {'range': [5, 15], 'color': "#abebc6"},  
-                {'range': [15, 30], 'color': "#82e0aa"}  
+                {'range': [0, 10], 'color': "#f9e79f"},   
+                {'range': [10, 20], 'color': "#abebc6"},  
+                {'range': [20, 30], 'color': "#82e0aa"},        
+                {'range': [30, 40], 'color': "#abebc6"}
             ],
             'threshold': {
                 'line': {'color': "red", 'width': 4},
                 'thickness': 0.75,
-                'value': 25
+                'value': 10
             }
         }
     ))
@@ -312,77 +313,10 @@ st.divider()
 st.header("🔍 Explainability Diagnostics")
 st.markdown("Why did ColdFusionX make this prediction?")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Modality Importance", "Cold-Start Meta-Weights", "Scenario Routing", "SHAP Values"])
+tab1, tab2, tab3 = st.tabs(["SHAP Values", "Cold-Start Meta-Weights", "Scenario Routing"])
 
-# --- TAB 1: MODALITY ATTENTION ---
+# --- TAB 1: LIVE EXPLAINABILITY ---
 with tab1:
-    st.markdown("Which data source contributed most to the decision?")
-    if force_cold:
-        st.warning("⚠️ **Cold-Start Active:** The 'id' weight below represents the **Synthetic Meta-Embedding**, not the historical ID!")
-
-    # Convert attention dict to DF
-    attn_data = {k: v.item() for k, v in attn.items()}
-    df_attn = pd.DataFrame([attn_data])
-    
-    fig_attn = px.bar(df_attn.T, orientation='h', 
-                      labels={'value': 'Attention Weight', 'index': 'Modality'},
-                      title="Fusion Layer Attention Weights")
-    fig_attn.update_layout(showlegend=False)
-    st.plotly_chart(fig_attn, use_container_width=True)
-
-# --- TAB 2: META-EMBEDDING (Standard Normalization) ---
-with tab2:
-    is_meta_active = force_cold or (batch['item_count'].item() == 0)
-
-    if not is_meta_active:
-        st.info("🔥 **Warm Start Active**")
-        st.markdown("To see how the **Meta-Generator** would synthesize a new ID for this item, toggle **❄️ Force Cold-Start**.")
-    else:
-        st.markdown("How was the **Cold-Start Item ID** generated?")
-        st.markdown("The Meta-Generator synthesized a proxy ID using this modality mix:")
-        
-        # Standard Visualization 
-        meta_raw = {k: v.item() for k, v in meta_attn.items()}
-        total_weight = sum(meta_raw.values())
-        
-        if total_weight == 0: 
-            meta_norm = {k: 0.33 for k in meta_raw}
-        else:
-            meta_norm = {k: v / total_weight for k, v in meta_raw.items()}
-            
-        df_meta = pd.DataFrame({'Modality': list(meta_norm.keys()), 'Contribution': list(meta_norm.values())})
-        
-        fig_meta = px.pie(
-            df_meta, 
-            values='Contribution', names='Modality', title="Meta-Embedding Composition",
-            color='Modality',
-            color_discrete_map={'text':'#1f77b4', 'image':'#aec7e8', 'time':'#ff7f0e'}
-        )
-        fig_meta.update_traces(textinfo='percent+label')
-        st.plotly_chart(fig_meta, use_container_width=True)
-        
-        with st.expander("View Raw Weights"):
-             st.json(meta_raw)
-
-# --- TAB 3: EXPERT GATES ---
-with tab3:
-    st.markdown("How did the **Scenario-Aware MMoE** route this sample?")
-    
-    gate_vals = gates.cpu().numpy().flatten()
-    # Create labels Expert 0, Expert 1...
-    expert_labels = [f'Expert {i}' for i in range(len(gate_vals))]
-    
-    df_gates = pd.DataFrame({'Expert': expert_labels, 'Weight': gate_vals})
-    
-    fig_gates = px.bar(df_gates, x='Expert', y='Weight', 
-                       title=f"Expert Activation for Scenario: {override_scene}")
-    st.plotly_chart(fig_gates, use_container_width=True)
-
-st.divider()
-
-
-# --- TAB 4: LIVE EXPLAINABILITY ---
-with tab4:
     st.markdown("### ⚡ Live Feature Attribution")
     st.markdown("This chart calculates **instance-wise importance** in real-time. Try toggling 'Force Cold-Start' to see how the model shifts its focus!")
     
@@ -425,7 +359,62 @@ with tab4:
     except Exception as e:
         st.error(f"Could not calculate attribution: {str(e)}")
         st.caption("Check if model gradients are enabled.")
+
+
+# --- TAB 2: META-EMBEDDING (Standard Normalization) ---
+with tab2:
+    is_meta_active = force_cold or (batch['item_count'].item() == 0)
+
+    if not is_meta_active:
+        st.info("🔥 **Warm Start Active**")
+        st.markdown("To see how the **Meta-Generator** would synthesize a new ID for this item, toggle **❄️ Force Cold-Start**.")
+    else:
+        st.markdown("How was the **Cold-Start Item ID** generated?")
+        st.markdown("The Meta-Generator synthesized a proxy ID using this modality mix:")
         
+        # Standard Visualization 
+        meta_raw = {k: v.item() for k, v in meta_attn.items()}
+        total_weight = sum(meta_raw.values())
+        
+        if total_weight == 0: 
+            meta_norm = {k: 0.33 for k in meta_raw}
+        else:
+            meta_norm = {k: v / total_weight for k, v in meta_raw.items()}
+            
+        df_meta = pd.DataFrame({'Modality': list(meta_norm.keys()), 'Contribution': list(meta_norm.values())})
+        
+        fig_meta = px.pie(
+            df_meta, 
+            values='Contribution', names='Modality', title="Meta-Embedding Composition",
+            color='Modality',
+            color_discrete_map={'text':'#1f77b4', 'image':'#aec7e8', 'time':'#ff7f0e'}
+        )
+        fig_meta.update_traces(textinfo='percent+label')
+        st.plotly_chart(fig_meta, use_container_width=True)
+        
+        with st.expander("View Raw Weights"):
+             st.json(meta_raw)
+
+
+# --- TAB 3: EXPERT GATES ---
+with tab3:
+    st.markdown("How did the **Scenario-Aware MMoE** route this sample?")
+    
+    gate_vals = gates.cpu().numpy().flatten()
+    # Create labels Expert 0, Expert 1...
+    expert_labels = [f'Expert {i}' for i in range(len(gate_vals))]
+    
+    df_gates = pd.DataFrame({'Expert': expert_labels, 'Weight': gate_vals})
+    
+    fig_gates = px.bar(df_gates, x='Expert', y='Weight', 
+                       title=f"Expert Activation for Scenario: {override_scene}")
+    st.plotly_chart(fig_gates, use_container_width=True)
+
+st.divider()
+
+
+
+
 
 # DEVELOPER INSPECTOR
 with st.expander("🛠️ Developer / Tensor Inspector"):
