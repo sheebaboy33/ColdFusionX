@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import numpy as np
 from navigation import render_top_nav
 
-# 1. PAGE CONFIGURATION
+# PAGE CONFIGURATION
 st.set_page_config(
     page_title="ColdFusionX | Research Hub",
     page_icon="❄️",
@@ -11,10 +11,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. RENDER TOP NAVIGATION
-render_top_nav()
+# RENDER TOP NAVIGATION
+render_top_nav("home")
 
 # --- CSS FOR ACADEMIC TYPOGRAPHY ---
+st.title("❄️ ColdFusionX")
 st.markdown("""
 <style>
     .big-font { font-size:20px !important; }

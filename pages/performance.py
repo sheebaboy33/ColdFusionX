@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # 2. RENDER TOP NAVIGATION
-render_top_nav()
+render_top_nav("performance")
 
 # --- HELPER: LOAD METRICS ---
 @st.cache_data

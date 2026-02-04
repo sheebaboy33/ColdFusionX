@@ -11,10 +11,15 @@ from navigation import render_top_nav
 
 
 # PAGE CONFIGURATION
-st.set_page_config(page_title="ColdFusionX | Model Performance", page_icon="❄️", layout="wide")
+st.set_page_config(
+    page_title="ColdFusionX | Model Performance", 
+    page_icon="❄️", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+    )
 
 # RENDER TOP NAV
-render_top_nav()
+render_top_nav("ad_simulator")
 
 # st.snow() # Fun effect! but probably not on this page (try on Home Page)
 
@@ -100,8 +105,7 @@ def get_live_attribution(model, batch_data):
 
 
 # SIDEBAR: CONTROLS
-st.sidebar.title("❄️ ColdFusionX")
-st.sidebar.markdown("### Campaign Simulator")
+st.sidebar.title(" Campaign Simulator")
 
 st.sidebar.header("1. Select Case Study")
 # Create a readable label for the dropdown
