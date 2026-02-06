@@ -12,3 +12,4 @@ pydantic>=2.0.0
 pydantic-settings
 pyarrow
 streamlit>=1.25.0
+streamlit-lottie

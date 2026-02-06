@@ -7,15 +7,20 @@ from PIL import Image
 import os
 
 from coldfusionx.inference.manager import InferenceManager
+from navigation import render_top_nav
 
 
 # PAGE CONFIGURATION
 st.set_page_config(
-    page_title="ColdFusionX | Campaign Simulator",
-    page_icon="❄️",
+    page_title="ColdFusionX | Model Performance", 
+    page_icon="❄️", 
     layout="wide",
     initial_sidebar_state="expanded"
-)
+    )
+
+# RENDER TOP NAV
+render_top_nav("ad_simulator")
+
 # st.snow() # Fun effect! but probably not on this page (try on Home Page)
 
 # CSS for "Academic" look
@@ -100,8 +105,7 @@ def get_live_attribution(model, batch_data):
 
 
 # SIDEBAR: CONTROLS
-st.sidebar.title("❄️ ColdFusionX")
-st.sidebar.markdown("### Campaign Simulator")
+st.sidebar.title(" Campaign Simulator")
 
 st.sidebar.header("1. Select Case Study")
 # Create a readable label for the dropdown
@@ -411,9 +415,6 @@ with tab3:
     st.plotly_chart(fig_gates, use_container_width=True)
 
 st.divider()
-
-
-
 
 
 # DEVELOPER INSPECTOR
