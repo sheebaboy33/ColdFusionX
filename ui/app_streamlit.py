@@ -1,7 +1,18 @@
+# ui/app_streamlit.py
+import sys
+import os
+from pathlib import Path
+
+# Add root to path BEFORE other project imports
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import streamlit as st
+from ui.navigation import render_top_nav
 import plotly.graph_objects as go
 import numpy as np
-from navigation import render_top_nav
+
 
 # PAGE CONFIGURATION
 st.set_page_config(
@@ -225,8 +236,12 @@ with col_arch_text:
     st.caption("See 'Performance' page for full details.")
 
 with col_arch_img:
-    # Placeholder for your uploaded architecture diagram
-    st.image("ColdFusionX-Architecture.jpg", caption="High level ColdFusionX High-Level Architecture", use_container_width=True)
+    arch_img_path = ROOT_DIR / "docs" / "ColdFusionX-Architecture.jpg"
+    if arch_img_path.exists():
+        st.image(str(arch_img_path), caption="High-Level Architecture of ColdFusionX", use_container_width=True)
+    else:
+        st.warning(f"Image not found at: {arch_img_path}")
+
 
 # --- FOOTER ---
 st.markdown("<br><br>", unsafe_allow_html=True)
