@@ -6,6 +6,100 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class IDEmbeddingLayer(nn.Module):
+    """
+    Learnable embedding tables for user IDs, item IDs, and scenario IDs.
+
+    This module provides the discrete embedding backbone used by ColdFusionX.
+    It maps categorical identifiers into dense trainable vectors that can be
+    fused later with metadata-based representations.
+
+    Outputs
+    -------
+    user_emb : torch.Tensor
+        User embedding tensor of shape (B, id_dim).
+    item_emb : torch.Tensor
+        Item embedding tensor of shape (B, id_dim).
+    scene_emb : torch.Tensor
+        Scenario embedding tensor of shape (B, scene_dim).
+
+    Parameters
+    ----------
+    num_users : int
+        Number of unique users.
+    num_items : int
+        Number of unique items.
+    num_scenes : int
+        Number of unique scenarios.
+    id_dim : int, optional
+        Embedding dimension used for user and item IDs.
+    scene_dim : int, optional
+        Embedding dimension used for scenario IDs.
+    dropout : float, optional
+        Dropout probability applied to the embedding outputs.
+
+    Notes
+    -----
+    Small-normal initialization is used to keep the initial embedding scale
+    controlled, which can help stabilize early optimization and reduce the
+    risk of large initial activations dominating the multimodal pipeline.
+    """
+
+    def __init__(
+        self,
+        num_users: int,
+        num_items: int,
+        num_scenes: int,
+        id_dim: int = 256,
+        scene_dim: int = 32,
+        dropout: float = 0.0,
+    ) -> None:
+        super().__init__()
+
+        self.user_emb = nn.Embedding(num_users, id_dim)
+        self.item_emb = nn.Embedding(num_items, id_dim)
+        self.scene_emb = nn.Embedding(num_scenes, scene_dim)
+
+        # Controlled small-scale initialization helps keep the embedding
+        # magnitudes stable during the early training phase.
+        nn.init.normal_(self.user_emb.weight, mean=0.0, std=0.01)
+        nn.init.normal_(self.item_emb.weight, mean=0.0, std=0.01)
+        nn.init.normal_(self.scene_emb.weight, mean=0.0, std=0.01)
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(
+        self,
+        user_idx: torch.Tensor,
+        item_idx: torch.Tensor,
+        scene_idx: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Retrieve dense embeddings for user, item, and scenario IDs.
+
+        Parameters
+        ----------
+        user_idx : torch.Tensor
+            User ID indices of shape (B,).
+        item_idx : torch.Tensor
+            Item ID indices of shape (B,).
+        scene_idx : torch.Tensor
+            Scenario ID indices of shape (B,).
+
+        Returns
+        -------
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+            A tuple containing:
+            - user embeddings of shape (B, id_dim)
+            - item embeddings of shape (B, id_dim)
+            - scenario embeddings of shape (B, scene_dim)
+        """
+        user_emb = self.dropout(self.user_emb(user_idx))
+        item_emb = self.dropout(self.item_emb(item_idx))
+        scene_emb = self.dropout(self.scene_emb(scene_idx))
+
+        return user_emb, item_emb, scene_emb
+    
 
 class ResidualTemporalFiLM(nn.Module):
     """
@@ -486,7 +580,7 @@ class AdaptedMMoEHead(nn.Module):
         return y
 
 
-class Proposed_ColdFusionX_ThesisEdition_v4(nn.Module):
+class Proposed_ColdFusionX_ThesisEdition(nn.Module):
     """
     Final ColdFusionX thesis architecture with adapted scenario-aware routing.
 
