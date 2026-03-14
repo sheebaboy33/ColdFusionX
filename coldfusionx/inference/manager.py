@@ -2,7 +2,7 @@ import torch
 import os
 from ..config.loader import ConfigLoader
 from ..data.feature_store import DemoFeatureStore
-from ..model.coldfusionx_model import ColdFusionXModel
+from ..model.coldfusionx_finalised import ColdFusionXModel
 
 class InferenceManager:
     def __init__(self, artifact_dir: str, device: str = "cpu"):
