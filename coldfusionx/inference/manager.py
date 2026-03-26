@@ -2,7 +2,7 @@ import torch
 import os
 from ..config.loader import ConfigLoader
 from ..data.feature_store import DemoFeatureStore
-from ..model.coldfusionx_finalised import Proposed_ColdFusionX_ThesisEdition
+from ..model.coldfusionx_finalised import Proposed_ColdFusionX_v10
 
 class InferenceManager:
     def __init__(self, artifact_dir: str, device: str = "cpu"):
@@ -20,7 +20,7 @@ class InferenceManager:
         
         # Initialize Model
         print("[InferenceManager] Building ColdFusionX Model...")
-        self.model = Proposed_ColdFusionX_ThesisEdition(
+        self.model = Proposed_ColdFusionX_v10(
             fusion_config=self.fusion_config,
             meta_config=self.meta_config,
             dropout=0.0 # No dropout during inference

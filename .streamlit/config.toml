@@ -2,7 +2,17 @@
 showSidebarNavigation = false
 
 [theme]
-primaryColor = "#2e86c1"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f2f6"
-textColor = "#262730"
+# Primary accent color (The ColdFusionX Blue)
+primaryColor = "#0052FF"
+
+# Background color for the main content area
+backgroundColor = "#F8F9FA"
+
+# Background color for the sidebar
+secondaryBackgroundColor = "#FFFFFF"
+
+# Text color
+textColor = "#1E293B"
+
+# Font family ('sans serif', 'serif', or 'monospace')
+font = "sans serif"
