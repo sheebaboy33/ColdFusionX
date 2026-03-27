@@ -86,7 +86,7 @@ with col_hero_text:
     """)
     
     if st.button("👉 View Live Simulator", type="primary"):
-        st.switch_page("pages/ad_simulator.py")
+        st.switch_page("pages/campaign_optimiser.py")
 
 with col_hero_img:
     # 3D LATENT SPACE VISUALIZATION (Conceptual)

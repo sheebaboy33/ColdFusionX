@@ -21,7 +21,7 @@ def render_top_nav(page_name=None):
     """
     st.markdown(common_css, unsafe_allow_html=True)
     # --- PAGE SPECIFIC CSS
-    if page_name == "ad_simulator":
+    if page_name == "campaign_optimiser":
         # No extra CSS needed here, standard header visibility is fine.
         pass 
         
@@ -42,7 +42,7 @@ def render_top_nav(page_name=None):
 
     # --- NAVIGATION BAR CONTENT ---
     # Determine the active page for styling (optional highlight logic can be added here)
-    if page_name in ["performance", "ad_simulator"]:
+    if page_name in ["performance", "campaign_optimiser"]:
         with st.container():
             # Adjust column weights to center the links effectively
             # col1: Logo, col3-5: Links
@@ -60,7 +60,7 @@ def render_top_nav(page_name=None):
                              #icon="📈"
                              )
             with col5:
-                st.page_link("pages/ad_simulator.py", 
+                st.page_link("pages/campaign_optimiser.py", 
                              label="Simulator", 
                              #icon="🚀"
                             )
@@ -82,7 +82,7 @@ def render_top_nav(page_name=None):
                              #icon="📈"
                              )
             with col5:
-                st.page_link("pages/ad_simulator.py", 
+                st.page_link("pages/campaign_optimiser.py", 
                              label="Simulator", 
                              #icon="🚀"
                             )
