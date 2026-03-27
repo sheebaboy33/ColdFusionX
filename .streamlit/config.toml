@@ -2,17 +2,9 @@
 showSidebarNavigation = false
 
 [theme]
-# Primary accent color (Vibrant 'Cold' Blue for buttons and sliders)
-primaryColor = "#0062FF"
-
-# Background color for the main content area (Pure crisp white for charts)
-backgroundColor = "#FFFFFF"
-
-# Background color for the sidebar (Cool, slate-tinted light gray for depth)
-secondaryBackgroundColor = "#F1F5F9"
-
-# Text color (Deep slate-blue/black for maximum readability)
-textColor = "#0F172A"
-
-# Font family
-font = "sans serif"
+base="dark"
+primaryColor="#3B82F6"
+backgroundColor="#0B1120"
+secondaryBackgroundColor="#1E293B"
+textColor="#F8FAFC"
+font="sans serif"

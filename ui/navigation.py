@@ -50,11 +50,20 @@ def render_top_nav(page_name=None):
             with col1:
                 st.markdown("### ❄️ ColdFusionX")
             with col3:
-                st.page_link("app_streamlit.py", label="Home", icon="🏠")
+                st.page_link("app_streamlit.py", 
+                             label="Home", 
+                             #icon="🏠"
+                             )
             with col4:
-                st.page_link("pages/performance.py", label="Performance", icon="📈")
+                st.page_link("pages/performance.py", 
+                             label="Performance", 
+                             #icon="📈"
+                             )
             with col5:
-                st.page_link("pages/ad_simulator.py", label="Simulator", icon="🚀")
+                st.page_link("pages/ad_simulator.py", 
+                             label="Simulator", 
+                             #icon="🚀"
+                            )
                 
             st.markdown("---")
 
@@ -63,11 +72,20 @@ def render_top_nav(page_name=None):
 
         with st.container():
             with col3:
-                st.page_link("app_streamlit.py", label="Home", icon="🏠")
+                st.page_link("app_streamlit.py", 
+                             label="Home", 
+                             #icon="🏠"
+                             )
             with col4:
-                st.page_link("pages/performance.py", label="Performance", icon="📈")
+                st.page_link("pages/performance.py", 
+                             label="Performance", 
+                             #icon="📈"
+                             )
             with col5:
-                st.page_link("pages/ad_simulator.py", label="Simulator", icon="🚀")
+                st.page_link("pages/ad_simulator.py", 
+                             label="Simulator", 
+                             #icon="🚀"
+                            )
                 
             st.markdown("---")
     else:
