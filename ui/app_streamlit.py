@@ -1,253 +1,220 @@
-# ui/app_streamlit.py
 import sys
 import os
 from pathlib import Path
-
-# Add root to path BEFORE other project imports
-ROOT_DIR = Path(__file__).resolve().parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-
 import streamlit as st
+
+# Ensure the app can find the backend modules and utils
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+from ui.utils.theme import load_custom_css, COLORS
 from ui.navigation import render_top_nav
-import plotly.graph_objects as go
-import numpy as np
 
 
 # PAGE CONFIGURATION
 st.set_page_config(
     page_title="ColdFusionX | Research Hub",
-    page_icon="❄️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
+    page_icon="❄️"
 )
 
-# RENDER TOP NAVIGATION
-render_top_nav("home")
+# Load the global theme (Gradient H1s, Backgrounds, Metric Cards)
+render_top_nav(page_name="home")
 
-# --- CSS FOR ACADEMIC TYPOGRAPHY ---
-st.title("❄️ ColdFusionX")
+load_custom_css()
+
+# PAGE-SPECIFIC CSS (MATCHING THEME.PY)
 st.markdown("""
 <style>
-    .big-font { font-size:20px !important; }
-    .hero-title { font-size: 3rem; font-weight: 800; color: #0d47a1; margin-bottom: 0px; }
-    .hero-subtitle { font-size: 1.5rem; color: #424242; font-weight: 300; margin-top: 0px; }
-    .highlight-box { 
-        background-color: #f0f8ff; 
-        padding: 20px; 
-        border-radius: 10px; 
-        border-left: 5px solid #0d47a1; 
-        margin-bottom: 20px;
+    /* Custom Card for Research Gaps (Subtle Red Accent) */
+    .gap-card {
+        background-color: rgba(239, 68, 68, 0.05);
+        border-left: 4px solid #EF4444;
+        padding: 16px 20px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        transition: transform 0.3s ease, background-color 0.3s ease;
     }
-    .research-gap-box {
-        background-color: #fff5f5;
-        padding: 15px;
-        border-radius: 8px;
-        border: 1px solid #ffcdd2;
-        margin-bottom: 10px;
+    .gap-card:hover {
+        transform: translateX(8px);
+        background-color: rgba(239, 68, 68, 0.1);
     }
-    .contribution-box {
-        background-color: #e8f5e9;
-        padding: 15px;
+    
+    /* Custom Card for Contributions (Subtle Green Accent) */
+    .cont-card {
+        background-color: rgba(16, 185, 129, 0.05);
+        border-left: 4px solid #10B981;
+        padding: 16px 20px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        transition: transform 0.3s ease, background-color 0.3s ease;
+    }
+    .cont-card:hover {
+        transform: translateX(8px);
+        background-color: rgba(16, 185, 129, 0.1);
+    }
+
+    .card-title { font-weight: 700; color: #F8FAFC; margin-bottom: 6px; font-size: 1.05rem; }
+    .card-text { color: #8892B0; font-size: 0.9rem; line-height: 1.4; }
+
+    /* Transform Streamlit Page Links into Gradient Buttons */
+    [data-testid="stPageLink-NavLink"] {
+        background: linear-gradient(90deg, #3B82F6, #06B6D4);
         border-radius: 8px;
-        border: 1px solid #c8e6c9;
-        margin-bottom: 10px;
+        padding: 10px 15px;
+        display: flex;
+        justify-content: center;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    [data-testid="stPageLink-NavLink"]:hover {
+        transform: scale(1.03);
+        box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
+        border-color: rgba(255,255,255,0.3);
+    }
+    [data-testid="stPageLink-NavLink"] p {
+        color: white !important;
+        font-weight: 600 !important;
+        margin: 0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- HERO SECTION ---
-col_hero_text, col_hero_img = st.columns([5, 3])
 
-with col_hero_text:
+# HERO SECTION & ABSTRACT
+# Using st.title so it inherits the gradient from your theme.py
+st.title("❄️ ColdFusionX")
+st.markdown('<p class="hero-subtitle">An Explainable Multi-Modal CTR Prediction Framework for <span class="highlight-text">Cold-Start Recommendation</span>.</p>', unsafe_allow_html=True)
+
+st.write("") 
+
+# Academic Context
+st.caption("**Author:** Sharm Johan Ashley Fernando (w1985557) | **Supervisor:** Ms. Nethmi Wijesinghe")
+st.caption("**Institution:** Informatics Institute of Technology (IIT) & University of Westminster, UK")
+
+# Project Abstract (Now colored to match the cards)
+st.markdown("""
+<div class="abstract-box">
+    <strong>Project Abstract:</strong> Modern recommender systems collapse when introducing new items due to their over-reliance on historical ID embeddings. ColdFusionX solves this zero-shot dilemma by adaptively fusing Text, Vision, and Temporal signals to synthesize robust Proxy IDs. By addressing gradient starvation and disjoint latent manifolds, the architecture seamlessly transitions from a content-driven state to a collaborative state as items mature, ensuring highly accurate and interpretable recommendations in data-sparse environments.
+</div>
+""", unsafe_allow_html=True)
+
+st.divider()
+
+
+# THE RESEARCH LANDSCAPE
+st.markdown("### The Research Landscape")
+st.markdown("Addressing structural bottlenecks in state-of-the-art (SOTA) Click-Through Rate prediction.")
+
+col_gap, col_cont = st.columns(2)
+
+with col_gap:
+    st.markdown("#### Identified Research Gaps")
     st.markdown("""
-    <p class="hero-subtitle">
-    Explainable Multi-Modal CTR Prediction via Modality-Attentive <br>
-    Meta-Embeddings and Temporal Drift Adaptations
-    </p>
+    <div class="gap-card">
+        <div class="card-title">1. Insufficient Multi-Modal Integration</div>
+        <div class="card-text">Standard models rely heavily on ID embeddings, failing to utilize rich textual and visual features to prevent predictive collapse in zero-shot scenarios.</div>
+    </div>
+    <div class="gap-card">
+        <div class="card-title">2. Static Fusion & Gradient Starvation</div>
+        <div class="card-text">Existing frameworks lack dynamic modality adjustment at the instance level, leaving networks vulnerable to gradient starvation when collaborative signals dominate.</div>
+    </div>
+    <div class="gap-card">
+        <div class="card-title">3. Neglect of Temporal Drift</div>
+        <div class="card-text">Item relevance and the semantic weight of content features naturally drift as an item ages, a dynamic that is under-modelled in sparse environments.</div>
+    </div>
+    <div class="gap-card">
+        <div class="card-title">4. The Black-Box Opacity</div>
+        <div class="card-text">Foundational CTR models prioritize predictive interaction over visibility, failing to expose how disparate signals jointly shape outcomes.</div>
+    </div>
     """, unsafe_allow_html=True)
-    
-    # Student / Supervisor Details (Academic Context)
+
+with col_cont:
+    st.markdown("#### ColdFusionX Contributions")
     st.markdown("""
-    **Author:** Sharm Johan Ashley Fernando (w1985557)  
-    **Supervisor:** Ms. Nethmi Wijesinghe  
-    **Institution:** Informatics Institute of Technology (IIT) in collaboration with University of Westminster, UK
-    """)
+    <div class="cont-card">
+        <div class="card-title">1. Stop-Gradient Cosine Alignment</div>
+        <div class="card-text">Geometrically pulls multi-modal content representations closer to the collaborative latent space, bridging disjoint manifolds without collapsing the encoders.</div>
+    </div>
+    <div class="cont-card">
+        <div class="card-title">2. Stochastic Alpha Masking (SAM)</div>
+        <div class="card-text">Reduces over-reliance on dominant ID pathways during training by mathematically governing the transition from Content-Based routing to Collaborative routing.</div>
+    </div>
+    <div class="cont-card">
+        <div class="card-title">3. Residual Temporal FiLM</div>
+        <div class="card-text">Incorporates lightweight temporal conditioning directly into the fusion pipeline to capture behavioural drift without overwhelming the core representation.</div>
+    </div>
+    <div class="cont-card">
+        <div class="card-title">4. Intrinsic Explainability</div>
+        <div class="card-text">Exposes internal tensor routing through modality-attentive Meta-Embeddings, demonstrating the True Routing Mass utilized for every prediction.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    
-    # The "Elevator Pitch" (Abstract Summary)
-    st.markdown("""
-    ### 🎯 Project Abstract
-    Modern CTR prediction struggles with **Cold-Start** scenarios where new items lack interaction history. 
-    **ColdFusionX** is a unified architecture that fuses **Text, Image, ID, and Time** features using 
-    **Scenario-Aware Meta-Learning**. It integrates a temporal encoder and **Instance-Wise Explainability**, 
-    ensuring recommendations are not only accurate but transparent and adaptable to concept drift.
-    """)
-    
-    if st.button("👉 View Live Simulator", type="primary"):
-        st.switch_page("pages/campaign_optimiser.py")
-
-with col_hero_img:
-    # 3D LATENT SPACE VISUALIZATION (Conceptual)
-    # Visualizing the "Fusion" of modalities
-    st.markdown("#### Latent Space Visualization")
-    st.caption("Conceptual representation of Multi-Modal Embedding Fusion")
-    
-    # Generating dummy data for visual flair
-    n = 100
-    x, y, z = np.random.normal(0, 1, n), np.random.normal(0, 1, n), np.random.normal(0, 1, n)
-    categories = np.random.choice(['Text', 'Image', 'Time'], n)
-    colors = {'Text': '#EF553B', 'Image': '#00CC96', 'Time': '#636EFA'}
-    c_map = [colors[c] for c in categories]
-
-    fig = go.Figure(data=[go.Scatter3d(
-        x=x, y=y, z=z,
-        mode='markers',
-        marker=dict(size=6, color=c_map, opacity=0.8),
-        hovertext=categories
-    )])
-    fig.update_layout(
-        margin=dict(l=0, r=0, b=0, t=0),
-        scene=dict(xaxis_title='Semantic', yaxis_title='Visual', zaxis_title='Temporal'),
-        height=350
-    )
-    st.plotly_chart(fig, use_container_width=True)
+st.divider()
 
 
-st.markdown("---")
+# SYSTEM ARCHITECTURE
+st.markdown("### System Architecture")
 
-# SECTION 2: RESEARCH LANDSCAPE (GAPS VS CONTRIBUTIONS)
-st.header("🔍 Research Landscape")
-st.markdown("Addressing critical limitations in state-of-the-art (SOTA) CTR prediction.")
-
-# We use tabs to switch between the "Problem" (Gaps) and the "Solution" (Contributions)
-tab_gaps, tab_contrib, tab_impact = st.tabs(["❌ Research Gaps", "✅ Novel Contributions", "🚀 Real-World Impact"])
-
-with tab_gaps:
-    st.markdown("### Unresolved Challenges in Current Literature ")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("""
-        <div class="research-gap-box">
-            <strong>1. Insufficient Multi-Modal Signals</strong><br>
-            Existing models (e.g., MetaEmb, EmerG) rely heavily on ID embeddings. They neglect rich 
-            <strong>textual and visual features</strong>, which are critical for connecting similar items 
-            in cold-start settings.
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="research-gap-box">
-            <strong>2. Lack of Scenario-Awareness</strong><br>
-            Current Multi-Task frameworks (MMoE, PLE) treat all scenarios uniformly. They fail to adapt 
-            fusion strategies for specific contexts (e.g., <em>Coupons vs. Videos</em>), ignoring the 
-            distinct user intents in each scenario.
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c2:
-        st.markdown("""
-        <div class="research-gap-box">
-            <strong>3. Neglect of Temporal Drift</strong><br>
-            Baseline cold-start models (MeLU, CLCRec) ignore <strong>Temporal context</strong> or 
-            <strong>Item Age</strong>. In fast-paced markets (Flash Sales), a static model becomes 
-            obsolete quickly as user behavior drifts.
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="research-gap-box">
-            <strong>4. The "Black Box" Problem</strong><br>
-            Deep Learning CTR models lack transparency. Stakeholders cannot verify <em>why</em> a 
-            prediction was made, leading to a lack of trust in regulated business environments.
-        </div>
-        """, unsafe_allow_html=True)
-
-with tab_contrib:
-    st.markdown("### ColdFusionX Architectural Contributions")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("""
-        <div class="contribution-box">
-            <strong>1. Modality-Attentive Meta-Embeddings</strong><br>
-            A novel generator that dynamically fuses Text, Image, and Time. It assigns 
-            <strong>instance-wise attention weights</strong> to each modality, addressing the 
-            modality imbalance problem.
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="contribution-box">
-            <strong>2. Scenario-Aware MMoE Routing</strong><br>
-            Extends Mixture-of-Experts with <strong>Scene-Specific Gating</strong>. The model 
-            selectively activates expert sub-networks based on the business scenario (e.g., Ads, Mini-Programs).
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c2:
-        st.markdown("""
-        <div class="contribution-box">
-            <strong>3. Temporal Drift Adaptation </strong><br>
-            Integrates a lightweight <strong>Time2Vec</strong> encoder directly into the fusion pipeline. 
-            This allows the model to capture periodic trends (e.g., weekend spikes) and adaptability.
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="contribution-box">
-            <strong>4. Post-Hoc Explainability Layer</strong><br>
-            A dedicated module capable of attributing CTR predictions to specific modalities 
-            (e.g., <em>"Click driven 60% by Image, 40% by Text"</em>), even for unseen items.
-        </div>
-        """, unsafe_allow_html=True)
-
-with tab_impact:
-    st.markdown("### 🌍 Significance of the Study")
-    st.info("""
-    **Problem Domain Contribution:**
-    * **Commercial Viability:** Reduces wasted ad spend on new items by accurately predicting their potential without history.
-    * **User Trust:** Provides transparent reasoning for recommendations, essential for "Responsible AI."
-    
-    **Research Domain Contribution:**
-    * **Unified Pipeline:** Bridges the gap between *Meta-Learning* (for Cold-Start) and *Multi-Modal Fusion*.
-    * **Reproducibility:** Validated on the large-scale **AntM2C** dataset (Huan et al., 2024).
-    """)
-
-st.markdown("---")
-
-# --- SECTION 3: SYSTEM OVERVIEW ---
-st.header("🏗️ System Architecture")
-
-col_arch_text, col_arch_img = st.columns([1, 2])
-
-with col_arch_text:
-    st.markdown("""
-    **The ColdFusionX Pipeline:**
-    
-    1.  **Multi-Modal Input:** Processing ID, Text (BERT), Image (ViT), and Time.
-    2.  **Cold-Start Detector:** Routes traffic based on user history.
-    3.  **Meta-Embedding Generator:** Synthesizes proxies for new items.
-    4.  **Adaptive Fusion:** Weights modalities based on context.
-    5.  **MMoE Routing:** Scenario-specific expert selection.
-    """)
-    st.caption("See 'Performance' page for full details.")
+col_arch_img, col_arch_text = st.columns([2, 1])
 
 with col_arch_img:
-    arch_img_path = ROOT_DIR / "docs" / "ColdFusionX-Architecture.jpg"
-    if arch_img_path.exists():
-        st.image(str(arch_img_path), caption="High-Level Architecture of ColdFusionX", use_container_width=True)
-    else:
-        st.warning(f"Image not found at: {arch_img_path}")
+    with st.container(border=True):
+        arch_img_path = project_root / "docs" / "ColdFusionX-Archtecture.png"
+        if arch_img_path.exists():
+            st.image(str(arch_img_path), use_container_width=True)
+        else:
+            st.info("Architecture Diagram Placeholder: Add image to `docs/ColdFusionX-Archtecture.png`")
+
+with col_arch_text:
+    st.markdown("#### Processing Pipeline")
+    st.markdown("""
+    * **Multi-Modal Encoders:** Extract dense semantic representations from both raw textual and visual inputs.
+    * **Alignment Module:** Utilizes Stop-Gradient Cosine Alignment to bridge disjoint latent manifolds.
+    * **Temporal Integration:** Injects item-age and periodic dynamics via Residual FiLM conditioning.
+    * **Fusion Engine:** Synthesizes the final Content-Based Proxy ID using an independent Sigmoid Attention mechanism.
+    * **SAM Gateway:** Dynamically shifts predictive reliance from the Content Proxy to historical Collaborative IDs.
+    """)
+
+st.divider()
 
 
-# --- FOOTER ---
-st.markdown("<br><br>", unsafe_allow_html=True)
+# INTERACTIVE NAVIGATION HUB
+st.markdown("### Interactive Artifact Modules")
+
+nav1, nav2, nav3 = st.columns(3)
+
+with nav1:
+    with st.container(border=True):
+        st.markdown("#### System Performance")
+        st.caption("Review offline evaluation metrics, ROC-AUC curves, and comparative baselines.")
+        st.write("")
+        st.page_link("pages/performance.py", label="View Performance")
+
+with nav2:
+    with st.container(border=True):
+        st.markdown("#### Campaign Simulator")
+        st.caption("Test the model in a live business context. Adjust budgets and target scenes.")
+        st.write("")
+        st.page_link("pages/campaign_optimiser.py", label="Launch Simulator")
+
+with nav3:
+    with st.container(border=True):
+        st.markdown("#### Model X-Ray")
+        st.caption("Inspect intrinsic diagnostics, tensor attention, and SAM trajectories.")
+        st.write("")
+        st.page_link("pages/model_xray.py", label="Open X-Ray")
+
+st.write("")
+st.write("")
+
+
+# FOOTER
 st.markdown("""
-<div style="text-align: center; color: gray; font-size: 0.8em; border-top: 1px solid #ddd; padding-top: 20px;">
-    <strong>ColdFusionX</strong> | Informatics Institute of Technology | University of Westminster<br>
-    <em>Submitted in partial fulfilment of the requirements for the BSc (Hons) in Computer Science.</em>
+<div style="text-align: center; color: gray; font-size: 0.85em; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+    <strong>ColdFusionX Architecture</strong> <br>
+    <em>Software Artifact optimized for academic review and conference-level demonstration.</em>
 </div>
 """, unsafe_allow_html=True)

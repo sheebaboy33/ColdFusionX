@@ -1,11 +1,7 @@
 import streamlit as st
-import pandas as pd
-import torch
 import plotly.graph_objects as go
 import os
 import sys
-from sklearn.decomposition import PCA
-import numpy as np
 
 # Ensure the app can find the backend modules and utils
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -116,7 +112,6 @@ with col2:
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(color=COLORS['text_muted']),
-        # Increased height from 260 to 360 to give the chart more visual weight
         height=360, 
         margin=dict(l=100, r=10, t=40, b=30),
         # Decreased bargap to make the actual bars thicker and more prominent

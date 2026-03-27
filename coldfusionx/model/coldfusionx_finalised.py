@@ -177,9 +177,9 @@ class MetaEmbeddingGenerator(nn.Module):
         B = text_vec.size(0)
 
         # Project modalities into the shared meta-dimensional space
-        z_text  = self.proj_text(text_vec)
+        z_text = self.proj_text(text_vec)
         z_image = self.proj_image(image_vec)
-        z_time  = self.proj_time(time_vec)
+        z_time = self.proj_time(time_vec)
 
         Z = torch.stack([z_text, z_image, z_time], dim=1)  # Shape: (Batch, 3, meta_dim)
 
