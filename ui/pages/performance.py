@@ -1,218 +1,268 @@
-import sys
-from pathlib import Path
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-
 import streamlit as st
-from ui.navigation import render_top_nav # Explicit package import
-from coldfusionx.utils import get_file_path
-import json
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import os
+import sys
+from ui.navigation import render_top_nav
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.theme import load_custom_css, COLORS 
 
+# RENDER THE TOP NAVIGATION BAR
+render_top_nav(page_name="performance")
 
-render_top_nav("performance")
+# LOAD CUSTOM CSS FOR THEME
+load_custom_css()   
 
-# This works regardless of where the script is executed from
-metrics_path = get_file_path("metrics", "eval_metrics.json")
-
-with open(metrics_path, "r") as f:
-    eval_data = json.load(f)
-
-
-# 1. PAGE CONFIGURATION
+# PAGE CONFIGURATION
 st.set_page_config(
-    page_title="ColdFusionX | Performance",
-    page_icon="📈",
+    page_title="ColdFusionX | Model Performance", 
+    page_icon="📈", 
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# --- HELPER: LOAD METRICS ---
+# DATA LOADING
 @st.cache_data
-def load_data():
+def load_metrics():
+    base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "artifacts", "release_demo", "metrics")
+    
+    global_df = pd.read_csv(os.path.join(base_path, "global_metrics_summary.csv"))
+    ablation_df = pd.read_csv(os.path.join(base_path, "ablation_metrics.csv"))
+    
+    # Try to load the ALL models scenario file
     try:
-        # Use the helper to get absolute paths
-        metrics_p = get_file_path("metrics", "eval_metrics.json")
-        ablation_p = get_file_path("data", "ablation_metrics.csv")
-        scenario_p = get_file_path("data", "scenario_metrics.csv")
-
-        with open(metrics_p, "r") as f:
-            eval_data = json.load(f)
+        scenario_df = pd.read_csv(os.path.join(base_path, "scenario_metrics_all.csv"))
+    except FileNotFoundError:
+        # Fallback
+        scenario_df = pd.read_csv(os.path.join(base_path, "scenario_metrics.csv"))
         
-        ablation_df = pd.read_csv(ablation_p)
-        scenario_df = pd.read_csv(scenario_p)
+    return global_df, ablation_df, scenario_df
 
-        return eval_data, ablation_df, scenario_df
-    except Exception as e:
-        st.error(f"Missing Data File: {e}")
-        return None, None, None
-
-eval_data, ablation_df, scenario_df = load_data()
-
-if not eval_data:
+try:
+    global_df, ablation_df, scenario_df = load_metrics()
+except FileNotFoundError as e:
+    st.error(f"Metrics files not found. Ensure artifacts are downloaded. {e}")
     st.stop()
 
-# --- CSS STYLING ---
-st.markdown("""
-<style>
-    .metric-card {
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-        padding: 20px;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .metric-value { font-size: 2.5rem; font-weight: 700; color: #0d47a1; }
-    .metric-label { font-size: 1rem; color: #6c757d; font-weight: 500; }
-    .insight-box {
-        background-color: #e3f2fd;
-        border-left: 5px solid #2196f3;
-        padding: 15px;
-        margin-top: 20px;
-        border-radius: 5px;
-    }
-</style>
-""", unsafe_allow_html=True)
+
+# HEADER
+st.title("Model Performance & Evaluation")
+st.markdown("**ColdFusionX** evaluation on 3.7M AntM2C interactions. Demonstrates state-of-the-art **Cold-Start** performance and **Temporal Drift** resilience.")
+st.divider()
 
 
-# SECTION 1: SYSTEM ARCHITECTURE
-st.title("📈 Model Performance & Evaluation")
-st.markdown("Comprehensive evaluation of **ColdFusionX** on the AntM2C dataset, featuring multi-modal ablation studies and scenario-specific benchmarking.")
+# SECTION 1: GLOBAL BASELINE COMPARISON
+st.header("1. Baseline Comparisons (The Cold-Start Proof)")
+st.markdown("While baselines succeed on *Warm* items, true performance is measured by the **drop penalty** on *Cold* items. A smaller penalty indicates superior multi-modal generalization.")
+# Calculate the Delta (Performance Drop)
+global_df['AUC Drop'] = global_df['Warm AUC'] - global_df['Cold AUC']
+global_df = global_df.sort_values('AUC Drop', ascending=False)
 
-with st.expander("🏗️ View System Architecture", expanded=False):
-    # Construct the absolute path to the image in the docs folder
-    arch_img_path = ROOT_DIR / "docs" / "ColdFusionX-Architecture.jpg"
+# Adjusting columns so the chart gets slightly more room (1:2 ratio)
+col1, col2 = st.columns([0.75, 2])
+
+with col1:
+    # Restored: Key Metric Cards for the Proposed Model on the left
+    cfx_metrics = global_df[global_df['Model'].str.contains("ColdFusionX")].iloc[0]
     
-    if arch_img_path.exists():
-        st.image(
-            str(arch_img_path), 
-            caption="Figure 1: ColdFusionX Scenario-Aware MMoE Architecture", 
-            use_container_width=True
+    st.markdown("### ColdFusionX (Proposed)")
+    st.metric(label="Overall AUC", value=f"{cfx_metrics['Overall AUC']:.4f}")
+    st.metric(label="Warm-Start AUC", value=f"{cfx_metrics['Warm AUC']:.4f}")
+    st.metric(label="Cold-Start AUC", value=f"{cfx_metrics['Cold AUC']:.4f}", delta="Top Performer")
+    st.metric(label="LogLoss", value=f"{cfx_metrics['Overall LogLoss']:.4f}", delta="-Lower is better", delta_color="inverse")
+
+with col2:
+    colors = [COLORS['primary'] if "ColdFusionX" in m else COLORS['text_muted'] for m in global_df['Model']]
+    
+    fig_delta = go.Figure(go.Bar(
+        x=global_df['AUC Drop'], 
+        y=global_df['Model'],
+        orientation='h',
+        marker_color=colors,
+        text=["Drop: " + str(round(val, 4)) for val in global_df['AUC Drop']],
+        textposition='auto',
+        textfont=dict(
+            # White text for the blue bar, black for the light gray bars
+            color=["white" if "ColdFusionX" in m else "black" for m in global_df['Model']],
+            family="Arial Bold",
+            size=11 # Slightly smaller for mobile screens
         )
-    else:
-        # Debugging tip: This will show you exactly where the code is looking
-        st.warning(f"Architecture image not found at: {arch_img_path}")
-
-# SECTION 2: GLOBAL METRICS (JSON DATA)
-st.markdown("### 1. Global Performance Metrics")
-st.markdown("Performance comparison across **Overall**, **Cold-Start** (Unseen Items), and **Warm-Start** splits.")
-
-# Extract metrics from JSON
-m_overall = eval_data['metrics']['overall']
-m_cold = eval_data['metrics']['cold']
-m_warm = eval_data['metrics']['warm']
-
-# Helper to render custom metric card
-def render_metric(label, auc, logloss, acc):
-    st.markdown(f"""
-    <div class="metric-card">
-        <div class="metric-label">{label} AUC</div>
-        <div class="metric-value">{auc:.4f}</div>
-        <div style="margin-top: 10px; font-size: 0.9em; color: #555;">
-            LogLoss: <strong>{logloss:.4f}</strong><br>
-            Accuracy: <strong>{acc:.2%}</strong>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-c1, c2, c3 = st.columns(3)
-with c1:
-    render_metric("Overall", m_overall['auc'], m_overall['logloss'], m_overall['accuracy'])
-with c2:
-    render_metric("❄️ Cold-Start", m_cold['auc'], m_cold['logloss'], m_cold['accuracy'])
-with c3:
-    render_metric("🔥 Warm-Start", m_warm['auc'], m_warm['logloss'], m_warm['accuracy'])
-
-st.divider()
-
-
-# SECTION 3: ABLATION STUDY (CSV DATA)
-st.header("2. Ablation Study: Component Impact")
-st.markdown("Analyzing the contribution of **Meta-Embeddings**, **Routing**, and **Modality Attention**.")
-
-col_ablation_chart, col_ablation_text = st.columns([2, 1])
-
-with col_ablation_chart:
-    # Prepare data for plotting (Long Format)
-    # We want to compare AUC_Cold vs AUC_Warm for each variant
-    plot_df = ablation_df[['variant', 'auc_cold', 'auc_warm']].melt(id_vars='variant', var_name='Split', value_name='AUC')
+    ))
     
-    # Rename for readability
-    plot_df['Split'] = plot_df['Split'].replace({'auc_cold': 'Cold Start', 'auc_warm': 'Warm Start'})
-    
-    fig_ablation = px.bar(
-        plot_df, 
-        x='variant', 
-        y='AUC', 
-        color='Split', 
-        barmode='group',
-        text_auto='.4f',
-        color_discrete_map={'Cold Start': '#00CC96', 'Warm Start': '#EF553B'},
-        height=400,
-        title="Impact of Components on AUC (Cold vs. Warm)"
+    fig_delta.update_layout(
+        # Use a dynamic height based on the number of bars
+        height=len(global_df) * 100, 
+        title={
+            'text': "Performance Penalty: Warm vs. Cold Items",
+            'y': 0.95,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        xaxis_title="AUC Drop (Warm - Cold)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)", 
+        font=dict(color="#94A3B8"),
+        # Reduced margins for responsiveness
+        margin=dict(l=10, r=10, t=80, b=40),
+        bargap=0.3,
+        # Ensure the chart stretches to the container
+        autosize=True 
     )
-    fig_ablation.update_layout(yaxis_range=[0.75, 0.95]) # Zoom in to see differences
-    st.plotly_chart(fig_ablation, use_container_width=True)
-
-with col_ablation_text:
-    st.markdown("#### 💡 Key Findings")
-    st.markdown("""
-    The ablation results confirm the theoretical hypothesis:
     
-    1.  **Meta-Embeddings (No Meta):** Removing them causes a massive drop in **Cold-Start AUC** (from `0.8418` to `0.8258`), confirming they are critical for unseen items.
-    2.  **Scenario Routing (No Routing):** Removing expert routing hurts **Both** warm and cold performance, as the model loses its ability to adapt to different traffic patterns.
-    3.  **Modality Attention:** Essential for balancing the signal from Text/Image vs. ID features.
-    """)
+    fig_delta.update_yaxes(automargin=True)
+    fig_delta.update_xaxes(showgrid=False) # Clean up mobile view
     
-    with st.expander("View Raw Ablation Data"):
-        st.dataframe(ablation_df[['variant', 'auc_all', 'auc_cold', 'auc_warm', 'delta_auc_cold']], hide_index=True)
+    # use_container_width=True is key for responsiveness
+    st.plotly_chart(fig_delta, use_container_width=True, config={'displayModeBar': False})
 
-
-st.divider()
-
-
-# SECTION 4: SCENARIO ANALYSIS (CSV DATA)
-st.header("3. Scenario-Specific Performance")
-st.markdown("Evaluating performance across the 5 business scenarios (0-4) defined in AntM2C.")
-
-# Prepare Scenario Data
-# We will compare AUC_Cold and AUC_Warm per scene
-scene_plot_df = scenario_df[['scene', 'AUC_cold', 'AUC_warm']].melt(id_vars='scene', var_name='Split', value_name='AUC')
-scene_plot_df['Split'] = scene_plot_df['Split'].replace({'AUC_cold': 'Cold Start', 'AUC_warm': 'Warm Start'})
-scene_plot_df['scene'] = "Scene " + scene_plot_df['scene'].astype(str)
-
-fig_scene = px.bar(
-    scene_plot_df,
-    x='scene',
-    y='AUC',
-    color='Split',
-    barmode='group',
-    title="AUC by Business Scenario",
-    color_discrete_map={'Cold Start': '#636EFA', 'Warm Start': '#FFA15A'},
-    height=400
+# The Detailed Baseline Table below the columns
+st.markdown("#### Comprehensive Baseline Metrics Table")
+display_df = global_df[['Model', 'Overall AUC', 'Warm AUC', 'Cold AUC', 'Overall LogLoss']].copy()
+st.dataframe(
+    display_df.style.set_properties(**{'background-color': 'rgba(72,88,113,0.25)'})
+                    .highlight_max(subset=['Overall AUC', 'Warm AUC', 'Cold AUC'], color='rgba(139, 92, 246, 0.3)')
+                    .highlight_min(subset=['Overall LogLoss'], color='rgba(139, 92, 246, 0.3)'),
+    use_container_width=True,
+    hide_index=True,
 )
-fig_scene.update_layout(yaxis_range=[0.5, 1.0])
-st.plotly_chart(fig_scene, use_container_width=True)
 
-# Scenario Insights
-st.info("""
-**Observation:**
-* **Scene 1 & 2** show the highest performance (>0.9 AUC), indicating rich data availability.
-* **Scene 3** appears to be the most challenging (AUC ~0.70), likely due to high sparsity or high noise.
-* **Cold-Start Gap:** The gap between Warm and Cold performance varies significantly by scenario, validating the need for **Scenario-Aware Routing**.
-""")
 
-with st.expander("View Detailed Scenario Metrics"):
-    st.dataframe(scenario_df, hide_index=True)
+# SECTION 2: ABLATION STUDY (WATERFALL)
+st.divider()
+st.header("2. Architectural Ablation Study")
+st.markdown("Quantifying the **Cold-Start AUC contribution** of each ColdFusionX intervention modules.")
 
-# FOOTER
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown("""
-<div style="text-align: center; color: gray; font-size: 0.8em;">
-    Metrics constructured using 3 million samples from the AntM2C Dataset Evaluation
-</div>
-""", unsafe_allow_html=True)
+col3, col4 = st.columns([1.75, 1])
+
+with col3:
+    # Calculate contributions mathematically
+    full_auc = ablation_df[ablation_df['Model'].str.contains("Full")]['Cold AUC'].values[0]
+    
+    try:
+        no_align = ablation_df[ablation_df['Model'].str.contains("Align")]['Cold AUC'].values[0]
+        no_film = ablation_df[ablation_df['Model'].str.contains("FiLM")]['Cold AUC'].values[0]
+        no_sam = ablation_df[ablation_df['Model'].str.contains("SAM")]['Cold AUC'].values[0]
+        
+        contrib_align = full_auc - no_align
+        contrib_film = full_auc - no_film
+        contrib_sam = full_auc - no_sam
+    except IndexError:
+        st.error("Ablation data is missing expected entries. Ensure the ablation_metrics.csv contains rows for 'No Align', 'No FiLM', and 'No SAM'.")
+        st.stop()
+
+    base_auc = full_auc - (contrib_align + contrib_film + contrib_sam)
+
+    fig_waterfall = go.Figure(go.Waterfall(
+        name="Ablation", orientation="v",
+        measure=["absolute", "relative", "relative", "relative", "total"],
+        x=["Base Architecture", "+ Cosine Alignment", "+ Temporal FiLM", "+ SAM Optimization", "ColdFusionX (Full)"],
+        textposition="outside",
+        text=[f"{base_auc:.4f}", f"+{contrib_align:.4f}", f"+{contrib_film:.4f}", f"+{contrib_sam:.4f}", f"{full_auc:.4f}"],
+        y=[base_auc, contrib_align, contrib_film, contrib_sam, full_auc],
+        connector={"line": {"color": "rgb(255, 255, 255)"}},
+        decreasing={"marker": {"color": COLORS['danger']}},
+        increasing={"marker": {"color": COLORS['accent']}},
+        totals={"marker": {"color": COLORS['primary']}}
+    ))
+
+    fig_waterfall.update_layout(
+        title="Component Contributions to Cold-Start AUC",
+        yaxis_title="Cold-Start AUC",
+        yaxis=dict(range=[0.82, 0.86]), # Zoomed in to highlight the steps
+        plot_bgcolor="rgba(0, 0,0,0)",
+        paper_bgcolor="rgba(72,88,113,0.25)", 
+        font=dict(color="#FFFFFF"),
+    )
+
+    st.plotly_chart(fig_waterfall, use_container_width=True)
+
+with col4:
+    # text white for readability
+    st.markdown("""
+    <style>
+        div[data-testid="stAlert"] * {
+            color: #F8FAFC !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    st.info("""
+    **Key Contributions:**
+    * **SAM Optimization:** Adaptive routing between the collaborative IDs and multi-modal proxy embeddings.
+    * **Cosine Alignment:** Forcing the meta-generator to mimic the established collaborative space.
+    * **Temporal FiLM:** Modulating visual and textual features to capture cyclical micro-drift successfully.
+    """)
+    st.dataframe(
+        ablation_df[['Model', 'Cold AUC', 'Overall AUC']].style.set_properties(**{'background-color': 'rgba(72,88,113,0.25)'}),
+        hide_index=True,
+        use_container_width=True
+    )
+
+
+# SECTION 3: TEMPORAL DRIFT RESILIENCE
+st.divider()
+st.header("3. Temporal Drift & Scenario Adaptability")
+st.markdown("Evaluating how consistently models maintain accuracy across shifting contextual environments (The 'Scissors Effect').")
+
+# 1. CALCULATE DYNAMIC RANGE (The "Zoom" Fix)
+# Find the min and max AUC to crop the chart
+padding = 0.01
+min_auc = scenario_df['AUC'].min() - padding
+max_auc = scenario_df['AUC'].max() + padding
+
+# 2. CREATE THE FIGURE
+fig_scenario = px.line(
+    scenario_df, 
+    x="Scenario", 
+    y="AUC", 
+    color="Model",
+    markers=True,
+    # Shorten title for mobile compatibility
+    title="Temporal Drift: Weekday vs. Weekend",
+    color_discrete_sequence=px.colors.qualitative.Safe # Fallback if specific colors aren't set
+)
+
+# Customize markers
+fig_scenario.update_traces(
+    line=dict(width=3),
+    marker=dict(size=10, line=dict(width=1, color='white'))
+)
+
+# 3. RESPONSIVE LAYOUT & DYNAMIC ZOOM
+fig_scenario.update_layout(
+    height=450,
+    # THE ZOOM: Crop the Y-axis to only show the relevant area
+    yaxis=dict(
+        range=[min_auc, max_auc], 
+        gridcolor="rgba(255,255,255,0.1)",
+        zeroline=False
+    ),
+    yaxis_title="Scenario AUC",
+    xaxis_title="",
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    
+    # THE MOBILE FIX: Legend moves below the chart to prevent overlapping
+    legend=dict(
+        orientation="h",
+        yanchor="top",
+        y=-0.2, 
+        xanchor="center",
+        x=0.5,
+        font=dict(size=10)
+    ),
+    font=dict(color="#FFFFFF"),
+    margin=dict(l=10, r=10, t=50, b=80)
+)
+
+# 4. DISPLAY
+# Using a container ensures that on mobile (where col5/col6 stack), 
+# the text appears logically after the chart.
+with st.container():
+    st.plotly_chart(fig_scenario, use_container_width=True, config={'displayModeBar': False})
+    
+    st.success("""
+    **The Scissors Effect:**
+    Unlike baselines that collapse under behavioral shifts, **ColdFusionX** remains stable—validating the Temporal Drift Adaptation module.
+    """)
