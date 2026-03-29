@@ -1,13 +1,13 @@
 import streamlit as st
 
-# The ColdFusionX Color Palette
+# The ColdFusionX Color Palette - Contrast Optimized for Accessibility
 COLORS = {
-    "background": "#1d3352",      # Deep dark navy (almost black)
-    "card_bg": "#697e9d",         # Slate blue for cards
+    "background": "#12233a",      # Slightly darkened for better overall base contrast
+    "card_bg": "#213650",         # Darkened from #697e9d to pass WCAG 4.5:1 ratio
     "primary": "#3B82F6",         # Royal Blue
     "accent": "#06B6D4",          # Icy Cyan (for highlights)
     "text_main": "#F8FAFC",       # Crisp white
-    "text_muted": "#D0D4DA",      # Slate gray
+    "text_muted": "#E2E8F0",      # Brightened from #D0D4DA for legibility on cards
     "danger": "#EF4444",          # Red for performance drops
     "success": "#10B981"          # Green for wins
 }
@@ -26,7 +26,7 @@ def load_custom_css():
         /* 2. Hide Streamlit Branding */
         #MainMenu {{visibility: hidden;}}
         footer {{visibility: hidden;}}
-        header {{visibility: hidden;}} /* Hides the top colored bar */
+        header {{visibility: hidden;}}
 
         /* 3. Reduce Top Padding */
         .block-container {{
@@ -34,20 +34,20 @@ def load_custom_css():
             padding-bottom: 2rem;
         }}
 
-        /* 4. Interactive Metric Cards (Breaks the default Streamlit look) */
+        /* 4. Interactive Metric Cards */
         [data-testid="stMetric"] {{
             background-color: {COLORS['card_bg']};
             border-radius: 12px;
             padding: 15px 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.15);
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }}
         
         /* Hover effect for interactivity */
         [data-testid="stMetric"]:hover {{
             transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
             border-color: {COLORS['accent']};
         }}
 
@@ -74,6 +74,7 @@ def load_custom_css():
         div.stAlert > div {{
             border-radius: 10px;
             border: none;
+            color: {COLORS['text_main']};
         }}
         
         /* 7. Typography Adjustments */
@@ -92,7 +93,7 @@ def load_custom_css():
         
         /* 8. Horizontal Dividers */
         hr {{
-            border-color: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
         }}
     </style>
     """

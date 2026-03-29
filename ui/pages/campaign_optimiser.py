@@ -14,10 +14,6 @@ from ui.utils.theme import load_custom_css, COLORS
 from coldfusionx.inference.manager import InferenceManager
 from navigation import render_top_nav
 
-
-# RENDER THE TOP NAVIGATION BAR
-render_top_nav(page_name="campaign_optimiser")
-
 # PAGE CONFIGURATION
 st.set_page_config(
     page_title="ColdFusionX | Campaign Optimizer", 
@@ -25,6 +21,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# RENDER THE TOP NAVIGATION BAR
+render_top_nav(page_name="campaign_optimiser")
 
 load_custom_css()
 
@@ -60,7 +59,7 @@ ad_metadata = manager.store.get_raw_metadata(selected_idx)
 
 
 # UI LAYOUT: THE CREATIVE PROFILE (FULL WIDTH)
-st.markdown("### Creative Profile")
+st.markdown("## Creative Profile")
 
 # Internal columns to keep the image reasonably sized next to the text
 prof_col1, prof_col2 = st.columns([1, 3])
@@ -101,7 +100,7 @@ col1, col2 = st.columns(2)
 
 # COLUMN 1: DYNAMIC CONTEXT SHIFTER
 with col1:
-    st.markdown("### Context Simulator")
+    st.markdown("## Context Simulator")
     st.markdown("Shift the environment to see how the AI adapts.")
     
     # Context Controls
@@ -144,25 +143,11 @@ with col1:
     fig_gauge.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)", font={'color': COLORS['text_main']})
     st.plotly_chart(fig_gauge, use_container_width=True, theme=None)
     
-    # Explainability Translation
-    # "Why this score?" Explainability Translation
-    f_attn = prediction["fusion_attention"]
-    total_weight = sum(f_attn.values())
-    
-    if total_weight > 0:
-        # Normalize the Sigmoid values to a 100% scale for the marketer
-        normalized_attn = {k: (v / total_weight) * 100 for k, v in f_attn.items()}
-        dominant_modality = max(normalized_attn, key=normalized_attn.get)
-        dom_percentage = normalized_attn[dominant_modality]
-        
-        st.info(f"**AI Insight:** Among the creative features, the model relies most heavily on the **{dominant_modality.upper()}** ({dom_percentage:.1f}%) to predict engagement in this context.")
-    else:
-        st.info("**AI Insight:** The model is relying purely on historical ID tracking for this prediction.")
 
         
 # COLUMN 2: ROI FORECASTER
 with col2:
-    st.markdown("### ROI Forecaster")
+    st.markdown("## ROI Forecaster")
     st.markdown("Project business impact based on live AI prediction.")
     
     # Budget Inputs
@@ -187,9 +172,63 @@ with col2:
         st.metric(label="Effective Cost-Per-Click (eCPC)", value=f"${cpc:.2f}", delta="Expensive Traffic", delta_color="inverse")
 
 
+# ==========================================
+# UI LAYOUT: AI DECISION ENGINE (FR04)
+# ==========================================
+st.divider()
+st.markdown("## AI Decision Engine: The 'Why'")
+st.markdown("Understand which creative elements the model prioritized to calculate the CTR.")
+
+# Fetch attention weights from the prediction made in col1
+f_attn = prediction.get("fusion_attention", {})
+total_weight = sum(f_attn.values()) if f_attn else 0
+
+if total_weight > 0:
+    # Normalize to 100%
+    normalized_attn = {k: (v / total_weight) * 100 for k, v in f_attn.items()}
+    
+    # Create an internal 2-column layout for this section
+    exp_col1, exp_col2 = st.columns([1, 2])
+    
+    with exp_col1:
+        labels = list(normalized_attn.keys())
+        values = list(normalized_attn.values())
+        
+        fig_routing = go.Figure(data=[go.Pie(
+            labels=labels, 
+            values=values, 
+            hole=.6,
+            marker=dict(colors=[COLORS.get('primary', '#1f77b4'), COLORS.get('success', '#2ca02c'), COLORS.get('danger', '#d62728')]),
+            textinfo='label+percent',
+            textposition='inside'
+        )])
+        
+        fig_routing.update_layout(
+            height=200, 
+            margin=dict(l=0, r=0, t=10, b=10), 
+            paper_bgcolor="rgba(0,0,0,0)",
+            showlegend=False
+        )
+        st.plotly_chart(fig_routing, use_container_width=True, theme=None)
+        
+    with exp_col2:
+        # Add a little vertical space to align with the chart
+        st.write("") 
+        st.write("")
+        dominant_modality = max(normalized_attn, key=normalized_attn.get)
+        
+        st.info(f"**Dominant Feature:** The model relies most heavily on the **{dominant_modality.upper()}** ({normalized_attn[dominant_modality]:.1f}%) to predict engagement in this specific context.")
+        
+        st.markdown(f"""
+        **Marketer Insight:** This dynamic routing proves ColdFusionX is overcoming the cold-start problem. Because historical data is limited, the AI is actively reading the raw creative assets. If you want to increase this CTR, you should focus your A/B testing efforts on improving the **{dominant_modality.lower()}**.
+        """)
+else:
+    st.info("**AI Insight:** The model is relying purely on historical ID tracking for this prediction. No multi-modal routing was triggered.")
+
+
 # UI LAYOUT: CROSS-CHANNEL PLACEMENT OPTIMIZER
 st.divider()
-st.markdown("### Cross-Channel Placement Optimizer")
+st.markdown("## Cross-Channel Placement Optimizer")
 st.markdown("Discover the optimal ad placement by simulating performance across different platform environments.")
 
 # Dictionary mapping human-readable scenes to their AntM2C tensor indices
@@ -242,6 +281,40 @@ if st.button("Run Placement Analysis", type="primary"):
             margin=dict(l=0, r=0, t=40, b=0)
         )
         st.plotly_chart(fig_places, use_container_width=True, theme=None)
+
+        # --- ADD THIS AT THE VERY BOTTOM (Above the final st.caption) ---
+        st.divider()
+        st.markdown("## Export Session Logs")
+        st.markdown("Download the current simulation metrics for campaign reporting.")
+
+        # FR06: Compile prediction results and interpretability metrics
+        export_data = {
+            "Campaign_Name": selected_label,
+            "Item_ID": item_id,
+            "Traffic_Condition": sim_traffic,
+            "Predicted_CTR": f"{ctr_score * 100:.2f}%",
+            "Allocated_Budget": f"${budget}",
+            "Expected_Impressions": int(impressions),
+            "Expected_Clicks": expected_clicks,
+            "Effective_CPC": f"${cpc:.2f}"
+        }
+
+        # Safely add the attention weights if they exist in this session
+        if 'normalized_attn' in locals():
+            for k, v in normalized_attn.items():
+                export_data[f"Weight_{k.upper()}"] = f"{v:.1f}%"
+
+        # Convert to Pandas DataFrame and encode to CSV
+        df_export = pd.DataFrame([export_data])
+        csv_data = df_export.to_csv(index=False).encode('utf-8')
+
+        st.download_button(
+            label="Export Inference Logs (CSV)",
+            data=csv_data,
+            file_name=f"ColdFusionX_Simulation_{item_id}.csv",
+            mime="text/csv",
+            type="secondary"
+        )
 
 st.divider()
 st.caption("Powered by ColdFusionX Inference Engine. Network serialization bypassed for sub-50ms local execution.")

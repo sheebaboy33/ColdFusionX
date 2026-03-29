@@ -9,7 +9,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from ui.utils.theme import load_custom_css, COLORS
-from ui.navigation import render_top_nav
+from navigation import render_top_nav
 
 
 # PAGE CONFIGURATION
@@ -22,12 +22,34 @@ st.set_page_config(
 
 # Load the global theme (Gradient H1s, Backgrounds, Metric Cards)
 render_top_nav(page_name="home")
-
 load_custom_css()
 
-# PAGE-SPECIFIC CSS (MATCHING THEME.PY)
+
+# CLEAN CUSTOM CSS
 st.markdown("""
 <style>
+    /* Bumping up the subtitle size and adjusting the margin to sit perfectly under the title */
+    .hero-subtitle { 
+        font-size: 1.85rem; /* Increased from 1.5rem */
+        font-weight: 400; 
+        margin-top: -10px; 
+        padding-top: 0px; 
+        color: #D0D4DA; 
+        line-height: 1.4;
+    }
+    .highlight-text { color: #06B6D4; font-weight: 700; }
+
+    /* Abstract Box Styling */
+    .abstract-box {
+        background-color: rgba(255, 255, 255, 0.03);
+        border-left: 4px solid #06B6D4;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
     /* Custom Card for Research Gaps (Subtle Red Accent) */
     .gap-card {
         background-color: rgba(239, 68, 68, 0.05);
@@ -57,47 +79,52 @@ st.markdown("""
     }
 
     .card-title { font-weight: 700; color: #F8FAFC; margin-bottom: 6px; font-size: 1.05rem; }
-    .card-text { color: #8892B0; font-size: 0.9rem; line-height: 1.4; }
+    .card-text { color: #d8d6d6; font-size: 0.9rem; line-height: 1.4; }
 
-    /* Transform Streamlit Page Links into Gradient Buttons */
-    [data-testid="stPageLink-NavLink"] {
-        background: linear-gradient(90deg, #3B82F6, #06B6D4);
-        border-radius: 8px;
-        padding: 10px 15px;
-        display: flex;
-        justify-content: center;
-        transition: all 0.3s ease;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-    [data-testid="stPageLink-NavLink"]:hover {
-        transform: scale(1.03);
-        box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
-        border-color: rgba(255,255,255,0.3);
-    }
-    [data-testid="stPageLink-NavLink"] p {
+    /* Transform Primary Buttons into Gradient Action Buttons */
+    button[kind="primary"] {
+        background: linear-gradient(90deg, #3B82F6, #06B6D4) !important;
+        border-radius: 8px !important;
+        border: none !important;
+        transition: all 0.3s ease !important;
         color: white !important;
         font-weight: 600 !important;
-        margin: 0 !important;
+        padding: 0.25rem 1rem !important; /* Keeps the button sleek */
+    }
+    
+    button[kind="primary"]:hover {
+        transform: scale(1.03) !important;
+        box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4) !important;
+        background: linear-gradient(90deg, #3B82F6, #06B6D4) !important;
+    }
+    
+    /* Ensure the text inside the button pops */
+    button[kind="primary"] div > p {
+        font-weight: 600 !important;
+        font-size: 1.05rem !important;
+        color: white !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 
 # HERO SECTION & ABSTRACT
-# Using st.title so it inherits the gradient from your theme.py
-st.title("❄️ ColdFusionX")
+st.title("ColdFusionX")
 st.markdown('<p class="hero-subtitle">An Explainable Multi-Modal CTR Prediction Framework for <span class="highlight-text">Cold-Start Recommendation</span>.</p>', unsafe_allow_html=True)
 
 st.write("") 
 
 # Academic Context
-st.caption("**Author:** Sharm Johan Ashley Fernando (w1985557) | **Supervisor:** Ms. Nethmi Wijesinghe")
+st.caption("**Author:** Sharm Johan Ashley Fernando (w1985557)")
+st.caption("**Supervisor:** Ms. Nethmi Wijesinghe")
+st.caption("**Degree:** BSc (Hons) in Computer Science ")
 st.caption("**Institution:** Informatics Institute of Technology (IIT) & University of Westminster, UK")
 
-# Project Abstract (Now colored to match the cards)
+# Project Abstract
 st.markdown("""
 <div class="abstract-box">
-    <strong>Project Abstract:</strong> Modern recommender systems collapse when introducing new items due to their over-reliance on historical ID embeddings. ColdFusionX solves this zero-shot dilemma by adaptively fusing Text, Vision, and Temporal signals to synthesize robust Proxy IDs. By addressing gradient starvation and disjoint latent manifolds, the architecture seamlessly transitions from a content-driven state to a collaborative state as items mature, ensuring highly accurate and interpretable recommendations in data-sparse environments.
+    <strong>Project Abstract:</strong> <br>
+            To overcome the severe performance degradation of Click-Through Rate (CTR) models on cold-start items, we developed ColdFusionX: an adaptive multi-modal architecture that leverages Stochastic Alpha Masking and Micro-Drift Temporal FiLM to dynamically synthesize proxy embeddings from vision, text, and time data. Evaluated on the AntM2C dataset, the prototype achieved state-of-the-art robustness by outperforming established industry baselines with a Cold-Start AUC of 0.8545 and an Overall AUC of 0.9255.
 </div>
 """, unsafe_allow_html=True)
 
@@ -171,7 +198,7 @@ with col_arch_img:
 with col_arch_text:
     st.markdown("#### Processing Pipeline")
     st.markdown("""
-    * **Multi-Modal Encoders:** Extract dense semantic representations from both raw textual and visual inputs.
+    * **Multi-Modal Encoders:** Extract semantic representations from both raw textual and visual inputs.
     * **Alignment Module:** Utilizes Stop-Gradient Cosine Alignment to bridge disjoint latent manifolds.
     * **Temporal Integration:** Injects item-age and periodic dynamics via Residual FiLM conditioning.
     * **Fusion Engine:** Synthesizes the final Content-Based Proxy ID using an independent Sigmoid Attention mechanism.
@@ -191,21 +218,24 @@ with nav1:
         st.markdown("#### System Performance")
         st.caption("Review offline evaluation metrics, ROC-AUC curves, and comparative baselines.")
         st.write("")
-        st.page_link("pages/performance.py", label="View Performance")
+        if st.button("View Performance", type="primary", use_container_width=True):
+            st.switch_page("pages/performance.py")
 
 with nav2:
     with st.container(border=True):
         st.markdown("#### Campaign Simulator")
         st.caption("Test the model in a live business context. Adjust budgets and target scenes.")
         st.write("")
-        st.page_link("pages/campaign_optimiser.py", label="Launch Simulator")
+        if st.button("Launch Simulator", type="primary", use_container_width=True):
+            st.switch_page("pages/campaign_optimiser.py")
 
 with nav3:
     with st.container(border=True):
         st.markdown("#### Model X-Ray")
         st.caption("Inspect intrinsic diagnostics, tensor attention, and SAM trajectories.")
         st.write("")
-        st.page_link("pages/model_xray.py", label="Open X-Ray")
+        if st.button("Open X-Ray", type="primary", use_container_width=True):
+            st.switch_page("pages/model_xray.py")
 
 st.write("")
 st.write("")
