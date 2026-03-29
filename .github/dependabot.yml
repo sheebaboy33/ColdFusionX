@@ -1,0 +1,6 @@
+version: 2
+updates:
+  - package-ecosystem: "pip" # Required for Python/requirements.txt
+    directory: "/"           # Where your requirements.txt is located
+    schedule:
+      interval: "weekly"     # Checks for security patches every week
