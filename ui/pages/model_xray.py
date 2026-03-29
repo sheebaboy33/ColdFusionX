@@ -61,7 +61,7 @@ col1, col2 = st.columns([1.2, 1.8])
 with col1:
     # The sleek SaaS Card component
     with st.container(border=True):
-        st.markdown("#### Target Creative")
+        st.markdown("### Target Creative")
         
         img_path = manager.store.get_image_path(ad_metadata.get('item_id', '0'))
         if os.path.exists(img_path):
@@ -131,7 +131,7 @@ st.markdown("Watch the SAM engine dynamically shift reliance from the Meta-Embed
 col3, col4 = st.columns([1.2, 1.8])
 
 with col3:
-    st.markdown("### Inject Historical Clicks")
+    st.markdown("## Inject Historical Clicks")
     sim_clicks = st.slider("Simulated Exposure Count", min_value=0, max_value=20, value=int(ad_metadata.get('historical_click_count', 0)), step=1)
     
     warmup_pred = manager.predict_demo_case(selected_idx, override_item_count=sim_clicks)
@@ -208,7 +208,7 @@ if st.button("🔍 Run Semantic Similarity Search", type="primary"):
             with sim_cols[i]:
                 # Wrap each result in a bordered container (Creates a SaaS "Card" look)
                 with st.container(border=True):
-                    st.markdown(f"#### Rank {i+1}")
+                    st.markdown(f"### Rank {i+1}")
                     st.metric(label="Cosine Similarity", value=f"{case['similarity_score']:.4f}")
                     
                     s_img = manager.store.get_image_path(case.get('item_id', '0'))
