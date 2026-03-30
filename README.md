@@ -11,27 +11,30 @@
 ---
 
 ## Table of Contents
-1. [System Architecture](#-system-architecture)
-2. [Key Features](#-key-features)
-3. [Reproducibility Guide (Quick Start)](#-reproducibility-guide-quick-start)
-4. [Project Structure](#-project-structure)
-5. [Testing & Security](#-testing--security)
-6. [Academic Citation](#-academic-citation)
+1. [System Architecture](#system-architecture)
+2. [Key Features and Dashboards](#key-features)
+3. [Reproducibility Guide](#quick-start)
+4. [Project Structure](#project-structure)
+5. [Testing and Security](#testing-security)
+6. [Academic Citation](#academic-citation)
 
 ---
 
+<a name="system-architecture"></a>
 ## System Architecture
 
-ColdFusionX bypasses the limitations of traditional collaborative filtering by actively routing between collaborative IDs and multi-modal proxy embeddings (Vision and Text). 
+ColdFusionX addresses the "Cold-Start Dilemma" by moving beyond static ID-based lookups. It utilises a Dual-Pathway Architecture that dynamically routes information between historical collaborative IDs and synthesised multi-modal proxy embeddings.
 
 ### Core Modules:
+* **Multi-Modal Meta-Generator:** A modality-aware synthesis engine that fuses Vision (ViT) and Text (BERT) features into a 256D proxy item ID. It uses Sigmoid Gating to allow multiple modalities to contribute to the final representation simultaneously.
 * **Feature Store Caching:** Pre-computed embedding extraction to satisfy sub-100ms real-time SLAs.
 * **Semantic Latent Space Alignment:** Forcing meta-generators to map multi-modal features into established collaborative spaces.
 * **Temporal FiLM:** Modulating visual/textual features to capture cyclical micro-drift (e.g., weekend vs. weekday traffic shifts).
 
 ---
 
-## Key Features & Dashboards
+<a name="key-features"></a>
+## Key Features and Dashboards
 
 The repository includes a highly optimized Streamlit frontend (Lighthouse Performance: 91, Accessibility: 100) for interactive evaluation.
 
@@ -41,6 +44,7 @@ The repository includes a highly optimized Streamlit frontend (Lighthouse Perfor
 
 ---
 
+<a name="quick-start"></a>
 ## Reproducibility Guide (Quick Start)
 
 Follow these steps to replicate the local evaluation environment and run the interactive dashboards.
@@ -50,7 +54,7 @@ Ensure you have Python 3.12+ installed. It is highly recommended to use a virtua
 
 ```bash
 # Clone the repository
-git clone [https://github.com/your-username/ColdFusionX.git](https://github.com/your-username/ColdFusionX.git)
+git clone https://github.com/sheebaboy33/ColdFusionX.git
 cd ColdFusionX
 
 # Create and activate a virtual environment
@@ -60,6 +64,7 @@ source venv/bin/activate  # On Windows use: venv\Scripts\activate
 
 ### 2. Install Dependencies
 ```bash
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
@@ -78,6 +83,7 @@ The application will launch locally at `http://localhost:8501`.
 
 ---
 
+<a name="project-structure"></a>
 ## Project Structure
 
 ```text
@@ -99,7 +105,8 @@ ColdFusionX/
 
 ---
 
-## Testing & Security
+<a name="testing-security"></a>
+## Testing and Security
 
 This framework has been audited for enterprise-grade deployment and Non-Functional Requirements (NFRs):
 
@@ -109,6 +116,7 @@ This framework has been audited for enterprise-grade deployment and Non-Function
 
 ---
 
+<a name="academic-citation"></a>
 ## Academic Citation
 
 If you use ColdFusionX in your research, please cite our forthcoming papers:
@@ -134,5 +142,5 @@ If you use ColdFusionX in your research, please cite our forthcoming papers:
 ```
 
 ---
-*Developed as part of the Final Year Project at the Informatics Institute of Technology (IIT).*
+*Developed as part of the Final Year Project at the Informatics Institute of Technology (IIT) in collaboration with the University of Westminster.*
 ```
