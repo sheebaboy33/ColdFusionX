@@ -26,11 +26,11 @@
 ColdFusionX addresses the "Cold-Start Dilemma" by moving beyond static ID-based lookups. It utilises a Dual-Pathway Architecture that dynamically routes information between historical collaborative IDs and synthesised multi-modal proxy embeddings.
 
 ### Core Modules:
-* **Multi-Modal Meta-Generator:** A modality-aware synthesis engine that fuses Vision (ViT) and Text (BERT) features into a 256D proxy item ID. It uses Sigmoid Gating to allow multiple modalities to contribute to the final representation simultaneously.
-* **Feature Store Caching:** Pre-computed embedding extraction to satisfy sub-100ms real-time SLAs.
-* **Semantic Latent Space Alignment:** Forcing meta-generators to map multi-modal features into established collaborative spaces.
-* **Temporal FiLM:** Modulating visual/textual features to capture cyclical micro-drift (e.g., weekend vs. weekday traffic shifts).
-
+* **Multi-Modal Meta-Generator:** A modality-aware engine that fuses Vision (ViT) and Text (BERT) features into a 256D proxy item ID. It uses Sigmoid Gating to allow multiple modalities to contribute to the final representation simultaneously.
+* **Stochastic Alpha Masking (SAM):** A novel routing module that prevents Gradient Starvation. It uses a logarithmic exposure count to calculate a blending ratio ($\alpha$), randomly masking collaborative IDs during training to ensure the multi-modal pathway remains stable for zero-shot scenarios.
+* **Micro-Drift Temporal FiLM:** A Feature-wise Linear Modulation layer that captures cyclical shifts in user intent. By modulating embeddings based on hour-of-day and day-of-week, the model adapts its predictions to real-time traffic "Micro-Drifts".
+* **Latent Manifold Alignment:** A joint-optimisation strategy using Stop-Gradient Cosine Similarity. This forces synthesised proxy embeddings to map directly into the established collaborative vector space, resolving the issue of disjoint manifolds between content and behavior.
+* **Mean-Pooled Transformer Fusion:** A sequence-based fusion block that evaluates the holistic interaction between User, Item, and Context. Mean-pooling is utilized as an aggressive regulariser to ensure stability in zero-shot environments.
 ---
 
 <a name="key-features"></a>
