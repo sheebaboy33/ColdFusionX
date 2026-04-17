@@ -22,8 +22,8 @@ class DemoFeatureStore:
         
         # 2. Load Tensors (CPU)
         self.text_emb = np.load(os.path.join(self.data_dir, "demo_text_embeddings.npy"), mmap_mode='c')
-        self.time_feats = torch.load(os.path.join(self.data_dir, "demo_time_features.pt"), map_location="cpu")
-        self.image_emb = torch.load(os.path.join(self.data_dir, "demo_image_embeddings.pt"), map_location="cpu")
+        self.time_feats = torch.load(os.path.join(self.data_dir, "demo_time_features.pt"), map_location="cpu", weights_only=True)
+        self.image_emb = torch.load(os.path.join(self.data_dir, "demo_image_embeddings.pt"), map_location="cpu", weights_only=True)
         
         # 3. Load Indices
         self.global_indices = np.load(os.path.join(self.data_dir, "demo_indices.npy"))

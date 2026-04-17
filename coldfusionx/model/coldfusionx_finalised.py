@@ -279,7 +279,8 @@ class Proposed_ColdFusionX_v12(nn.Module):
         # Cache for Joint-Optimization loss
         self._last_align_loss = torch.tensor(0.0)
 
-    def forward(self, user_idx: torch.Tensor, item_idx: torch.Tensor, scene_idx: torch.Tensor, text_vec: torch.Tensor, image_vec: torch.Tensor, time_vec: torch.Tensor, cold_mask=None, item_count=None):
+    def forward(self, user_idx: torch.Tensor, item_idx: torch.Tensor, scene_idx: torch.Tensor, text_vec: torch.Tensor, image_vec: torch.Tensor, 
+                time_vec: torch.Tensor, cold_mask=None, item_count=None):
         if item_count is None: 
             item_count = torch.zeros_like(item_idx)
 

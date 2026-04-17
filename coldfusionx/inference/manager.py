@@ -32,7 +32,7 @@ class InferenceManager:
         if not os.path.exists(weights_path):
              raise FileNotFoundError(f"Model weights not found at {weights_path}")
              
-        raw_state_dict = torch.load(weights_path, map_location=device)
+        raw_state_dict = torch.load(weights_path, map_location=device, weights_only=True)
         
         patched_state_dict = {}
         for key, tensor in raw_state_dict.items():
