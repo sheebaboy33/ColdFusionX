@@ -6,6 +6,6 @@ pandas>=2.0.0
 scikit-learn>=1.2.0
 
 # UI & Visualization 
-streamlit>=1.30.0
+streamlit>=1.56.0
 plotly>=5.15.0
 pyarrow>=14.0.0
