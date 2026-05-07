@@ -24,7 +24,9 @@ class InferenceManager:
         self.model = Proposed_ColdFusionX_v12(
             fusion_config=self.fusion_config,
             meta_config=self.meta_config,
-            dropout=0.0 # Strict eval mode
+            dropout=0.0,
+            scene_dim=32,
+            attn_hidden=128  
         )
         
         # Load Weights with dynamic renaming patch

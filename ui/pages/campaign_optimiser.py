@@ -212,7 +212,6 @@ if total_weight > 0:
         st.plotly_chart(fig_routing, use_container_width=True, theme=None)
         
     with exp_col2:
-        # Add a little vertical space to align with the chart
         st.write("") 
         st.write("")
         dominant_modality = max(normalized_attn, key=normalized_attn.get)
@@ -282,7 +281,6 @@ if st.button("Run Placement Analysis", type="primary"):
         )
         st.plotly_chart(fig_places, use_container_width=True, theme=None)
 
-        # --- ADD THIS AT THE VERY BOTTOM (Above the final st.caption) ---
         st.divider()
         st.markdown("## Export Session Logs")
         st.markdown("Download the current simulation metrics for campaign reporting.")
@@ -299,7 +297,7 @@ if st.button("Run Placement Analysis", type="primary"):
             "Effective_CPC": f"${cpc:.2f}"
         }
 
-        # Safely add the attention weights if they exist in this session
+        #  add the attention weights if they exist in this session
         if 'normalized_attn' in locals():
             for k, v in normalized_attn.items():
                 export_data[f"Weight_{k.upper()}"] = f"{v:.1f}%"

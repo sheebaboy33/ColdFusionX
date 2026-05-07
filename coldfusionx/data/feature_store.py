@@ -62,10 +62,10 @@ class DemoFeatureStore:
         elif "scene_idx" in row: s_idx = row["scene_idx"]
         else: s_idx = 0
         
-        # Extract the historical click count we calculated in Colab
+        # Extract the historical click count calculated in Colab
         hist_clicks = row.get("historical_click_count", 0)
         
-        # Prepare Batch (Add Batch Dimension [1, ...])
+        # Prepare Batch 
         batch = {
             "user_idx": torch.tensor([u_idx], dtype=torch.long, device=device),
             "item_idx": torch.tensor([i_idx], dtype=torch.long, device=device),
