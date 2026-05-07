@@ -22,8 +22,8 @@ class DemoFeatureStore:
         
         # 2. Load Tensors (CPU)
         self.text_emb = np.load(os.path.join(self.data_dir, "demo_text_embeddings.npy"), mmap_mode='c')
-        self.time_feats = torch.load(os.path.join(self.data_dir, "demo_time_features.pt"), map_location="cpu")
-        self.image_emb = torch.load(os.path.join(self.data_dir, "demo_image_embeddings.pt"), map_location="cpu")
+        self.time_feats = torch.load(os.path.join(self.data_dir, "demo_time_features.pt"), map_location="cpu", weights_only=True)
+        self.image_emb = torch.load(os.path.join(self.data_dir, "demo_image_embeddings.pt"), map_location="cpu", weights_only=True)
         
         # 3. Load Indices
         self.global_indices = np.load(os.path.join(self.data_dir, "demo_indices.npy"))
@@ -62,10 +62,10 @@ class DemoFeatureStore:
         elif "scene_idx" in row: s_idx = row["scene_idx"]
         else: s_idx = 0
         
-        # Extract the historical click count we calculated in Colab
+        # Extract the historical click count calculated in Colab
         hist_clicks = row.get("historical_click_count", 0)
         
-        # Prepare Batch (Add Batch Dimension [1, ...])
+        # Prepare Batch 
         batch = {
             "user_idx": torch.tensor([u_idx], dtype=torch.long, device=device),
             "item_idx": torch.tensor([i_idx], dtype=torch.long, device=device),

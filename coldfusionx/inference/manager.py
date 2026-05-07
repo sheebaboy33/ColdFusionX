@@ -24,7 +24,9 @@ class InferenceManager:
         self.model = Proposed_ColdFusionX_v12(
             fusion_config=self.fusion_config,
             meta_config=self.meta_config,
-            dropout=0.0 # Strict eval mode
+            dropout=0.0,
+            scene_dim=32,
+            attn_hidden=128  
         )
         
         # Load Weights with dynamic renaming patch
@@ -32,7 +34,7 @@ class InferenceManager:
         if not os.path.exists(weights_path):
              raise FileNotFoundError(f"Model weights not found at {weights_path}")
              
-        raw_state_dict = torch.load(weights_path, map_location=device)
+        raw_state_dict = torch.load(weights_path, map_location=device, weights_only=True)
         
         patched_state_dict = {}
         for key, tensor in raw_state_dict.items():
